@@ -57,6 +57,7 @@ class Sampler:
         return np.array(states), np.array(actions), np.array(rewards), self.done
 
     def _compute_returns(self, rewards, last_state_value):
+        rewards[-1] = last_state_value
         for i in reversed(range(len(rewards) - 1)):
             rewards[i] += self.discount * rewards[i+1]
         return rewards
