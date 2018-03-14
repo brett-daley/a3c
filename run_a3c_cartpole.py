@@ -16,7 +16,7 @@ def main():
         env=env,
         optimizer=optimizer,
         discount=0.99,
-        max_sample_length=100,
+        max_sample_length=5,
         n_iterations=100000,
     )
 

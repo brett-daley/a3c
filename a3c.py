@@ -71,5 +71,5 @@ def execute(
 
                 print('Iteration', i)
                 print('Episodes {}'.format(len(episode_rewards)))
-                print('Mean reward (100 episodes) {}'.format(np.mean(episode_rewards[:-100])))
+                print('Mean reward (100 episodes) {}'.format(np.mean(episode_rewards[-100:])))
                 print(flush=True)
