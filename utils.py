@@ -1,6 +1,7 @@
 import tensorflow as tf
 import numpy as np
 import itertools
+import copy
 
 
 def seed_all(env, seed=None):
@@ -14,9 +15,9 @@ def seed_all(env, seed=None):
     np.random.seed(seed)
 
 
-class Sampler:
+class Actor:
     def __init__(self, env, discount, policy_func, value_func):
-        self.env      = env
+        self.env      = copy.deepcopy(env)
         self.state    = None
         self.done     = True
         self.discount = discount
@@ -61,3 +62,9 @@ class Sampler:
         for i in reversed(range(len(rewards) - 1)):
             rewards[i] += self.discount * rewards[i+1]
         return rewards
+
+    def get_n_episodes(self):
+        return len(self.env.get_episode_rewards())
+
+    def get_average_reward(self, n):
+        return np.mean(self.env.get_episode_rewards()[-n:])

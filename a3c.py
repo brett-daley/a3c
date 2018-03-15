@@ -1,6 +1,5 @@
 import tensorflow as tf
 import tensorflow.contrib.layers as layers
-import numpy as np
 import utils
 
 
@@ -48,7 +47,7 @@ def execute(
 
         session.run(tf.global_variables_initializer())
 
-        sampler = utils.Sampler(
+        actor = utils.Actor(
             env,
             discount,
             policy_func=lambda x: action_distr.eval(feed_dict={state_ph: x[None]})[0],
@@ -56,20 +55,16 @@ def execute(
         )
 
         for i in range(n_iterations):
-            states, actions, returns = sampler.sample(t_max=max_sample_length)
+            states, actions, returns = actor.sample(t_max=max_sample_length)
 
-            feed_dict = {
+            session.run(train_op, feed_dict={
                 state_ph:  states,
                 action_ph: actions,
                 return_ph: returns,
-            }
-
-            session.run(train_op, feed_dict=feed_dict)
+            })
 
             if i % log_every_n_iterations == 0:
-                episode_rewards = env.get_episode_rewards()
-
                 print('Iteration', i)
-                print('Episodes {}'.format(len(episode_rewards)))
-                print('Mean reward (100 episodes) {}'.format(np.mean(episode_rewards[-100:])))
+                print('Episodes {}'.format(actor.get_n_episodes()))
+                print('Mean reward (100 episodes) {}'.format(actor.get_average_reward(n=100)))
                 print(flush=True)
