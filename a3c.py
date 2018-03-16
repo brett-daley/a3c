@@ -1,5 +1,6 @@
 import tensorflow as tf
 import tensorflow.contrib.layers as layers
+import numpy as np
 import utils
 
 
@@ -19,6 +20,7 @@ def execute(
         optimizer,
         discount,
         max_sample_length,
+        n_actors,
         n_iterations,
         log_every_n_iterations=2000,
     ):
@@ -48,15 +50,22 @@ def execute(
 
         session.run(tf.global_variables_initializer())
 
-        actor = utils.Actor(
-            env,
-            discount,
-            policy_func=lambda x: action_distr.eval(feed_dict={state_ph: x[None]})[0],
-            value_func=lambda x: value.eval(feed_dict={state_ph: x[None]})[0],
-        )
+        def policy_func(state):
+            distr = action_distr.eval(feed_dict={state_ph: state[None]})[0]
+            action = np.random.choice(np.arange(n_actions), p=distr)
+            return action
+
+        def value_func(state):
+            return value.eval(feed_dict={state_ph: state[None]})[0]
+
+        def new_actor():
+            return utils.Actor(env, discount, policy_func, value_func)
+
+        actors = [new_actor() for i in range(n_actors)]
 
         for i in range(n_iterations):
-            states, actions, returns = actor.sample(t_max=max_sample_length)
+            x = np.random.randint(n_actors)
+            states, actions, returns = actors[x].sample(t_max=max_sample_length)
 
             session.run(train_op, feed_dict={
                 state_ph:  states,
@@ -65,7 +74,10 @@ def execute(
             })
 
             if i % log_every_n_iterations == 0:
+                n_episodes = sum([actors[j].get_n_episodes() for j in range(n_actors)])
+                mean_reward = np.mean([actors[j].get_average_reward(n=10) for j in range(n_actors)])
+
                 print('Iteration', i)
-                print('Episodes {}'.format(actor.get_n_episodes()))
-                print('Mean reward (100 episodes) {}'.format(actor.get_average_reward(n=100)))
+                print('Episodes {}'.format(n_episodes))
+                print('Mean reward (10 episodes) {}'.format(mean_reward))
                 print(flush=True)

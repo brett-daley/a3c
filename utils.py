@@ -42,8 +42,7 @@ class Actor:
         states.append(self.state)
 
         for t in itertools.count():
-            action_distr = self.policy(self.state)
-            action = np.random.choice(np.arange(self.env.action_space.n), p=action_distr)
+            action = self.policy(self.state)
 
             self.state, reward, self.done, _ = self.env.step(action)
 
