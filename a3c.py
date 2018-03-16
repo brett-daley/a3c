@@ -42,8 +42,9 @@ def execute(
 
         loss1 = tf.reduce_sum(log_action_probs * advantages)
         loss2 = tf.reduce_sum(tf.square(advantages))
+        entropy = -tf.reduce_sum(log_action_probs * action_probs)
 
-        train_op = optimizer.minimize(-loss1 + loss2, var_list=policy_vars)
+        train_op = optimizer.minimize(-loss1 + loss2 + (0.01 * entropy), var_list=policy_vars)
 
         session.run(tf.global_variables_initializer())
 
