@@ -6,8 +6,6 @@ import utils
 
 def main():
     env = gym.make('CartPole-v0')
-    # TODO: re-enable videos
-    env = gym.wrappers.Monitor(env, 'videos/', force=True, video_callable=lambda e: False)
 
     utils.seed_all(env, seed=0)
 

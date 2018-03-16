@@ -63,6 +63,23 @@ def execute(
 
         actors = [new_actor() for i in range(n_actors)]
 
+        def benchmark(e, n_episodes):
+            state = e.reset()
+
+            for i in range(n_episodes):
+                done = False
+                while not done:
+                    action = policy_func(state)
+                    state, reward, done, _ = e.step(action)
+
+                    if done:
+                        state = e.reset()
+
+            return np.mean(e.get_episode_rewards()[-n_episodes:])
+
+        import gym
+        env = gym.wrappers.Monitor(env, 'videos/', force=True, video_callable=lambda e: e % 10 == 0)
+
         for i in range(n_iterations):
             x = np.random.randint(n_actors)
             states, actions, returns = actors[x].sample(t_max=max_sample_length)
@@ -74,10 +91,9 @@ def execute(
             })
 
             if i % log_every_n_iterations == 0:
-                n_episodes = sum([actors[j].get_n_episodes() for j in range(n_actors)])
-                mean_reward = np.mean([actors[j].get_average_reward(n=10) for j in range(n_actors)])
+                mean_reward = benchmark(env, 10)
 
                 print('Iteration', i)
-                print('Episodes {}'.format(n_episodes))
+                # TODO: include total number of timesteps
                 print('Mean reward (10 episodes) {}'.format(mean_reward))
                 print(flush=True)
