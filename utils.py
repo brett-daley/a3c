@@ -25,10 +25,8 @@ class Actor:
         self.value    = value_func
 
     def sample(self, t_max):
-        states, actions, rewards, done = self._sample(t_max)
-
-        last_state_value = 0. if done else self.value(states[-1])
-        returns = self._compute_returns(rewards, last_state_value)
+        states, actions, rewards, last_value = self._sample(t_max)
+        returns = self._compute_returns(rewards, last_value)
 
         return states, actions, returns
 
@@ -41,27 +39,32 @@ class Actor:
             self.state = self.env.reset()
             self.done = False
 
+        states.append(self.state)
+
         for t in itertools.count():
-            if t >= t_max or self.done:
-                break
-
-            states.append(self.state)
-
             action_distr = self.policy(self.state)
             action = np.random.choice(np.arange(self.env.action_space.n), p=action_distr)
 
             self.state, reward, self.done, _ = self.env.step(action)
 
+            states.append(self.state)
             actions.append(action)
             rewards.append(reward)
 
-        return np.array(states), np.array(actions), np.array(rewards), self.done
+            if t == t_max or self.done:
+                break
 
-    def _compute_returns(self, rewards, last_state_value):
-        rewards[-1] = last_state_value
+        last_value = 0. if self.done else self.value(states[-1])
+
+        return np.array(states[:-1]), np.array(actions), np.array(rewards), last_value
+
+    def _compute_returns(self, rewards, last_value):
+        values = last_value * np.array([self.discount**i for i in range(1, len(rewards)+1)])
+
         for i in reversed(range(len(rewards) - 1)):
             rewards[i] += self.discount * rewards[i+1]
-        return rewards
+
+        return rewards + values
 
     def get_n_episodes(self):
         return len(self.env.get_episode_rewards())

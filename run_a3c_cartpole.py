@@ -10,14 +10,14 @@ def main():
 
     utils.seed_all(env, seed=0)
 
-    optimizer = tf.train.AdamOptimizer(learning_rate=1e-4)
+    optimizer = tf.train.AdamOptimizer(learning_rate=1e-3)
 
     a3c.execute(
         env=env,
         optimizer=optimizer,
         discount=0.99,
         max_sample_length=5,
-        n_iterations=100000,
+        n_iterations=75000,
     )
 
 

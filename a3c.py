@@ -20,7 +20,7 @@ def execute(
         discount,
         max_sample_length,
         n_iterations,
-        log_every_n_iterations=100,
+        log_every_n_iterations=2000,
     ):
 
     input_size, = env.observation_space.shape
