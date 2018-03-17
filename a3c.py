@@ -19,6 +19,7 @@ def execute(
         env,
         optimizer,
         discount,
+        entropy_penalty,
         max_sample_length,
         n_actors,
         n_iterations,
@@ -40,13 +41,11 @@ def execute(
         action_probs = tf.gather_nd(action_distr, action_indices)
         log_action_probs = tf.log(action_probs)
 
-        advantages = return_ph - value
+        loss1 = tf.reduce_sum(log_action_probs * (return_ph - tf.stop_gradient(value)))
+        loss2 = tf.reduce_sum(tf.square(return_ph - value))
+        entropy = entropy_penalty * (-tf.reduce_sum(log_action_probs * action_probs))
 
-        loss1 = tf.reduce_sum(log_action_probs * advantages)
-        loss2 = tf.reduce_sum(tf.square(advantages))
-        entropy = -tf.reduce_sum(log_action_probs * action_probs)
-
-        train_op = optimizer.minimize(-loss1 + loss2 + (0.01 * entropy), var_list=policy_vars)
+        train_op = optimizer.minimize(-(loss1 + entropy) + loss2, var_list=policy_vars)
 
         session.run(tf.global_variables_initializer())
 
