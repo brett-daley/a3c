@@ -22,8 +22,8 @@ def execute(
         entropy_penalty,
         max_sample_length,
         n_actors,
-        n_iterations,
-        log_every_n_iterations=2000,
+        max_timesteps,
+        log_every_n_steps=10000,
     ):
 
     input_size, = env.observation_space.shape
@@ -79,7 +79,9 @@ def execute(
         import gym
         env = gym.wrappers.Monitor(env, 'videos/', force=True, video_callable=lambda e: e % 10 == 0)
 
-        for i in range(n_iterations):
+        T = 0
+
+        while T < max_timesteps:
             x = np.random.randint(n_actors)
             states, actions, returns = actors[x].sample(t_max=max_sample_length)
 
@@ -89,10 +91,13 @@ def execute(
                 return_ph: returns,
             })
 
-            if i % log_every_n_iterations == 0:
+            t = T + len(states)
+
+            if (t // log_every_n_steps) > (T // log_every_n_steps):
                 mean_reward = benchmark(env, 10)
 
-                print('Iteration', i)
-                # TODO: include total number of timesteps
+                print('Timestep', t)
                 print('Mean reward (10 episodes) {}'.format(mean_reward))
                 print(flush=True)
+
+            T = t

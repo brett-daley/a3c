@@ -18,7 +18,7 @@ def main():
         entropy_penalty=0.01,
         max_sample_length=5,
         n_actors=16,
-        n_iterations=75000,
+        max_timesteps=300000,
     )
 
 
