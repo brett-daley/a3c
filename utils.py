@@ -42,6 +42,9 @@ class Actor:
         states.append(self.state)
 
         for t in itertools.count():
+            if t == t_max or self.done:
+                break
+
             action = self.policy(self.state)
 
             self.state, reward, self.done, _ = self.env.step(action)
@@ -50,15 +53,12 @@ class Actor:
             actions.append(action)
             rewards.append(reward)
 
-            if t == t_max or self.done:
-                break
-
         last_value = 0. if self.done else self.value(states[-1])
 
         return np.array(states[:-1]), np.array(actions), np.array(rewards), last_value
 
     def _compute_returns(self, rewards, last_value):
-        values = last_value * np.array([self.discount**i for i in range(1, len(rewards)+1)])
+        values = last_value * np.array([self.discount**(i+1) for i in reversed(range(len(rewards)))])
 
         for i in reversed(range(len(rewards) - 1)):
             rewards[i] += self.discount * rewards[i+1]
