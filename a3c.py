@@ -1,6 +1,9 @@
 import tensorflow as tf
 import tensorflow.contrib.layers as layers
 import numpy as np
+import itertools
+import copy
+import gym
 import utils
 
 
@@ -49,18 +52,82 @@ def execute(
 
         session.run(tf.global_variables_initializer())
 
-        def policy_func(state):
-            distr = action_distr.eval(feed_dict={state_ph: state[None]})[0]
-            action = np.random.choice(np.arange(n_actions), p=distr)
-            return action
+        T = 0
 
-        def value_func(state):
-            return value.eval(feed_dict={state_ph: state[None]})[0]
 
-        def new_actor():
-            return utils.Actor(env, discount, policy_func, value_func)
+        class Actor:
+            def __init__(self):
+                self.env      = copy.deepcopy(env)
+                self.state    = None
+                self.done     = True
 
-        actors = [new_actor() for i in range(n_actors)]
+            def train(self):
+                states, actions, returns = self._sample()
+
+                session.run(train_op, feed_dict={
+                    state_ph:  states,
+                    action_ph: actions,
+                    return_ph: returns,
+                })
+
+                return len(states)
+
+            def _policy(self, state):
+                distr = session.run(action_distr, feed_dict={state_ph: state[None]})[0]
+                action = np.random.choice(np.arange(n_actions), p=distr)
+                return action
+
+            def _value(self, state):
+                return session.run(value, feed_dict={state_ph: state[None]})[0]
+
+            def _sample(self):
+                states  = []
+                actions = []
+                rewards = []
+
+                state = self.state
+                done = self.done
+
+                if done:
+                    state = self.env.reset()
+                    done = False
+
+                states.append(state)
+
+                for t in itertools.count():
+                    if t == max_sample_length or done:
+                        break
+
+                    action = self._policy(state)
+
+                    state, reward, done, _ = self.env.step(action)
+
+                    states.append(state)
+                    actions.append(action)
+                    rewards.append(reward)
+
+                self.state = state
+                self.done = done
+
+                return np.array(states[:-1]), np.array(actions), self._compute_returns(rewards)
+
+            def _compute_returns(self, rewards):
+                last_value = 0. if self.done else self._value(self.state)
+                values = last_value * np.array([discount**(i+1) for i in reversed(range(len(rewards)))])
+
+                for i in reversed(range(len(rewards) - 1)):
+                    rewards[i] += discount * rewards[i+1]
+
+                return (rewards + values)
+
+            def get_n_episodes(self):
+                return len(self.env.get_episode_rewards())
+
+            def get_average_reward(self, n):
+                return np.mean(self.env.get_episode_rewards()[-n:])
+
+
+        actors = [Actor() for i in range(n_actors)]
 
         def benchmark(e, n_episodes):
             state = e.reset()
@@ -68,7 +135,7 @@ def execute(
             for i in range(n_episodes):
                 done = False
                 while not done:
-                    action = policy_func(state)
+                    action = actors[0]._policy(state)
                     state, reward, done, _ = e.step(action)
 
                     if done:
@@ -79,19 +146,11 @@ def execute(
         import gym
         env = gym.wrappers.Monitor(env, 'videos/', force=True, video_callable=lambda e: e % 10 == 0)
 
-        T = 0
-
         while T < max_timesteps:
             x = np.random.randint(n_actors)
-            states, actions, returns = actors[x].sample(t_max=max_sample_length)
 
-            session.run(train_op, feed_dict={
-                state_ph:  states,
-                action_ph: actions,
-                return_ph: returns,
-            })
-
-            t = T + len(states)
+            t = actors[x].train()
+            t += T
 
             if (t // log_every_n_steps) > (T // log_every_n_steps):
                 mean_reward = benchmark(env, 10)
