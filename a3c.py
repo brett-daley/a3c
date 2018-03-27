@@ -4,6 +4,7 @@ import numpy as np
 import itertools
 import copy
 import gym
+import threading
 import utils
 
 
@@ -52,25 +53,37 @@ def execute(
 
         session.run(tf.global_variables_initializer())
 
-        T = 0
+        shared_counter = utils.Counter()
 
 
         class Actor:
-            def __init__(self):
-                self.env      = copy.deepcopy(env)
-                self.state    = None
-                self.done     = True
+            def __init__(self, counter):
+                self.env     = copy.deepcopy(env)
+                self.env     = gym.wrappers.Monitor(self.env, 'videos/', force=True, video_callable=lambda e: False)
 
-            def train(self):
-                states, actions, returns = self._sample()
+                self.state   = None
+                self.done    = True
 
-                session.run(train_op, feed_dict={
-                    state_ph:  states,
-                    action_ph: actions,
-                    return_ph: returns,
-                })
+                self.counter = counter
+                self.thread  = threading.Thread(target=self._train)
 
-                return len(states)
+            def start(self):
+                self.thread.start()
+
+            def join(self):
+                self.thread.join()
+
+            def _train(self):
+                while self.counter.value() < max_timesteps:
+                    states, actions, returns = self._sample()
+
+                    self.counter.increment(len(states))
+
+                    session.run(train_op, feed_dict={
+                        state_ph:  states,
+                        action_ph: actions,
+                        return_ph: returns,
+                    })
 
             def _policy(self, state):
                 distr = session.run(action_distr, feed_dict={state_ph: state[None]})[0]
@@ -127,36 +140,28 @@ def execute(
                 return np.mean(self.env.get_episode_rewards()[-n:])
 
 
-        actors = [Actor() for i in range(n_actors)]
+        actors = [Actor(shared_counter) for i in range(n_actors)]
+        for a in actors:
+            a.start()
 
-        def benchmark(e, n_episodes):
-            state = e.reset()
+        while True:
+            t = shared_counter.value()
+            # TODO: need a more elegant way to do this
+            import time
+            time.sleep(0.01)
+            T = shared_counter.value()
 
-            for i in range(n_episodes):
-                done = False
-                while not done:
-                    action = actors[0]._policy(state)
-                    state, reward, done, _ = e.step(action)
+            if (T // log_every_n_steps) > (t // log_every_n_steps):
+                n_episodes = sum([a.get_n_episodes() for a in actors])
+                mean_reward = np.mean([a.get_average_reward(100) for a in actors])
 
-                    if done:
-                        state = e.reset()
-
-            return np.mean(e.get_episode_rewards()[-n_episodes:])
-
-        import gym
-        env = gym.wrappers.Monitor(env, 'videos/', force=True, video_callable=lambda e: e % 10 == 0)
-
-        while T < max_timesteps:
-            x = np.random.randint(n_actors)
-
-            t = actors[x].train()
-            t += T
-
-            if (t // log_every_n_steps) > (T // log_every_n_steps):
-                mean_reward = benchmark(env, 10)
-
-                print('Timestep', t)
-                print('Mean reward (10 episodes) {}'.format(mean_reward))
+                print('Timesteps', t)
+                print('Episodes', n_episodes)
+                print('Mean reward (100 episodes/thread)', mean_reward)
                 print(flush=True)
 
-            T = t
+            if T >= max_timesteps:
+                break
+
+        for a in actors:
+            a.join()

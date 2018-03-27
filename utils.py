@@ -11,3 +11,14 @@ def seed_all(env, seed=None):
     env.seed(seed)
     tf.set_random_seed(seed)
     np.random.seed(seed)
+
+
+class Counter:
+    def __init__(self):
+        self._value = 0
+
+    def value(self):
+        return self._value
+
+    def increment(self, x):
+        self._value += x
