@@ -2,7 +2,6 @@ import tensorflow as tf
 import tensorflow.contrib.layers as layers
 import numpy as np
 import itertools
-import copy
 import gym
 import threading
 import math
@@ -65,9 +64,10 @@ def execute(
 
 
         class Actor:
-            def __init__(self, counter):
-                self.env     = copy.deepcopy(env)
-                self.env     = gym.wrappers.Monitor(self.env, 'videos/', force=True, video_callable=lambda e: False)
+            def __init__(self, env_id, counter):
+                self.env = gym.make(env_id)
+                self.env = gym.wrappers.Monitor(self.env, 'videos/', force=True, video_callable=lambda e: False)
+                self.env.seed(utils.random_seed())
 
                 self.state   = None
                 self.done    = True
@@ -148,7 +148,7 @@ def execute(
                 return np.mean(self.env.get_episode_rewards()[-n:])
 
 
-        actors = [Actor(shared_counter) for i in range(n_actors)]
+        actors = [Actor(env.spec.id, shared_counter) for i in range(n_actors)]
         for a in actors:
             a.start()
 

@@ -2,15 +2,18 @@ import tensorflow as tf
 import numpy as np
 
 
-def seed_all(env, seed=None):
+def seed_all(seed=None):
     if seed is None:
-        seed = np.random.randint(65536)
+        seed = random_seed()
 
     print('Using {} as random seed'.format(seed))
 
-    env.seed(seed)
     tf.set_random_seed(seed)
     np.random.seed(seed)
+
+
+def random_seed():
+    return np.random.randint(65536)
 
 
 class Counter:

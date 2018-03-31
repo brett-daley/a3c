@@ -7,7 +7,7 @@ import utils
 def main():
     env = gym.make('CartPole-v0')
 
-    utils.seed_all(env, seed=0)
+    utils.seed_all(seed=0)
 
     objective_optimizer = tf.train.RMSPropOptimizer(learning_rate=1e-4, decay=0.999)
     loss_optimizer      = tf.train.RMSPropOptimizer(learning_rate=1e-3, decay=0.999)
