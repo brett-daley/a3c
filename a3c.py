@@ -5,6 +5,7 @@ import itertools
 import copy
 import gym
 import threading
+import math
 import utils
 
 
@@ -21,9 +22,10 @@ def policy(state, n_actions, scope):
 
 def execute(
         env,
-        optimizer,
+        objective_optimizer,
+        loss_optimizer,
         discount,
-        entropy_penalty,
+        entropy_bonus,
         max_sample_length,
         n_actors,
         max_timesteps,
@@ -43,13 +45,19 @@ def execute(
 
         action_indices = tf.stack([tf.range(tf.size(action_ph)), action_ph], axis=1)
         action_probs = tf.gather_nd(action_distr, action_indices)
-        log_action_probs = tf.log(action_probs)
+        log_action_probs = tf.log(action_probs + 1e-30) / tf.log(2.)
 
-        loss1 = tf.reduce_sum(log_action_probs * (return_ph - tf.stop_gradient(value)))
-        loss2 = tf.reduce_sum(tf.square(return_ph - value))
-        entropy = entropy_penalty * (-tf.reduce_sum(log_action_probs * action_probs))
+        objective = tf.reduce_sum(log_action_probs * (return_ph - tf.stop_gradient(value)))
+        loss      = tf.reduce_sum(tf.square(return_ph - value))
+        entropy   = entropy_bonus * (-tf.reduce_sum(log_action_probs * action_probs))
 
-        train_op = optimizer.minimize(-(loss1 + entropy) + loss2, var_list=policy_vars)
+        grads_and_vars     = objective_optimizer.compute_gradients(-(objective + entropy), var_list=policy_vars)
+        objective_train_op = objective_optimizer.apply_gradients(grads_and_vars)
+
+        grads_and_vars = loss_optimizer.compute_gradients(loss, var_list=policy_vars)
+        loss_train_op  = loss_optimizer.apply_gradients(grads_and_vars)
+
+        train_op = tf.group(*[objective_train_op, loss_train_op])
 
         session.run(tf.global_variables_initializer())
 
@@ -152,12 +160,13 @@ def execute(
             T = shared_counter.value()
 
             if (T // log_every_n_steps) > (t // log_every_n_steps):
+                window_size = math.ceil(100. / n_actors)
                 n_episodes = sum([a.get_n_episodes() for a in actors])
-                mean_reward = np.mean([a.get_average_reward(100) for a in actors])
+                mean_reward = np.mean([a.get_average_reward(window_size) for a in actors])
 
                 print('Timesteps', t)
                 print('Episodes', n_episodes)
-                print('Mean reward (100 episodes/thread)', mean_reward)
+                print('Mean reward ({} episodes/thread) {:.3f}'.format(window_size, mean_reward))
                 print(flush=True)
 
             if T >= max_timesteps:
