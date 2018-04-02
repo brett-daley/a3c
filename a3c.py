@@ -17,16 +17,17 @@ def execute(
         max_sample_length,
         n_actors,
         max_timesteps,
+        state_dtype=tf.float32,
         log_every_n_steps=10000,
     ):
 
-    input_size, = env.observation_space.shape
+    input_shape = env.observation_space.shape
     n_actions   = env.action_space.n
 
     with tf.Session() as session:
-        state_ph      = tf.placeholder(tf.float32, [None, input_size])
-        action_ph     = tf.placeholder(tf.int32,   [None])
-        return_ph     = tf.placeholder(tf.float32, [None])
+        state_ph      = tf.placeholder(state_dtype, [None] + list(input_shape))
+        action_ph     = tf.placeholder(tf.int32,    [None])
+        return_ph     = tf.placeholder(tf.float32,  [None])
 
         action_distr, value = policy(state_ph, n_actions, scope='policy')
         policy_vars = tf.trainable_variables(scope='policy')
@@ -55,6 +56,8 @@ def execute(
         class Actor:
             def __init__(self, env_id, counter):
                 self.env = gym.make(env_id)
+                import wrappers
+                self.env = wrappers.wrap_deepmind(self.env)
                 self.env = gym.wrappers.Monitor(self.env, 'videos/', force=True, video_callable=lambda e: False)
                 self.env.seed(utils.random_seed())
 
