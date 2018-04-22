@@ -1,5 +1,6 @@
 import tensorflow as tf
 import numpy as np
+import threading
 
 
 def seed_all(seed=None):
@@ -17,11 +18,24 @@ def random_seed():
 
 
 class Counter:
-    def __init__(self):
+    def __init__(self, period):
+        self._period = period
         self._value = 0
+        self._expiration = period
+
+        self._lock = threading.Lock()
 
     def value(self):
         return self._value
 
+    def is_expired(self):
+        return (self._value >= self._expiration)
+
     def increment(self, x):
+        self._lock.acquire()
         self._value += x
+        self._lock.release()
+
+    def reset(self):
+        self._expiration = self._period - (self._value - self._expiration)
+        self._value = 0

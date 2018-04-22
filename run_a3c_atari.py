@@ -3,12 +3,11 @@ import tensorflow as tf
 import a3c
 import utils
 import policies
+import wrappers
 
 
 def main():
-    env = gym.make(gym.benchmark_spec('Atari40M').tasks[3].env_id)
-    import wrappers
-    env = wrappers.wrap_deepmind(env)
+    env = gym.make(gym.benchmark_spec('Atari200M').tasks[3].env_id)
 
     utils.seed_all(seed=0)
 
@@ -26,6 +25,7 @@ def main():
         entropy_bonus=0.01,
         max_sample_length=20,
         n_actors=16,
+        wrapper=wrappers.wrap_deepmind,
         max_timesteps=40000000,
         state_dtype=tf.uint8,
     )
