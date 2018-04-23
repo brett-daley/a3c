@@ -14,6 +14,7 @@ def execute(
         policy,
         optimizer,
         discount,
+        Lambda,
         entropy_bonus,
         max_sample_length,
         actor_history_len,
@@ -104,8 +105,8 @@ def execute(
                 action = np.random.choice(np.arange(n_actions), p=distr)
                 return action
 
-            def _value(self, state):
-                return session.run(value, feed_dict={state_ph: state[None]})[0]
+            def _value(self, states):
+                return session.run(value, feed_dict={state_ph: states})
 
             def _sample(self):
                 states  = []
@@ -136,16 +137,22 @@ def execute(
                 self.state = state
                 self.done = done
 
-                return np.array(states[:-1]), np.array(actions), self._compute_returns(rewards)
+                states  = np.array(states)
+                actions = np.array(actions)
+                rewards = np.array(rewards)
 
-            def _compute_returns(self, rewards):
-                last_value = 0. if self.done else self._value(self.state)
-                values = last_value * np.array([discount**(i+1) for i in reversed(range(len(rewards)))])
+                return states[:-1], actions, self._compute_returns(states, rewards)
 
-                for i in reversed(range(len(rewards) - 1)):
-                    rewards[i] += discount * rewards[i+1]
+            def _compute_returns(self, states, rewards):
+                values = self._value(states)
+                if self.done:
+                    values[-1] = 0.
+                returns = rewards + (discount * values[1:])
 
-                return (rewards + values)
+                for i in reversed(range(len(returns) - 1)):
+                    returns[i] += (discount * Lambda) * (returns[i+1] - values[i])
+
+                return returns
 
             def get_n_episodes(self):
                 return len(utils.get_episode_rewards(self.env))
