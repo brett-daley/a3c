@@ -5,6 +5,28 @@ import gym
 from gym import spaces
 
 
+class HistoryWrapper(gym.Wrapper):
+    def __init__(self, env, history_len):
+        super(HistoryWrapper, self).__init__(env)
+
+        self.history_len = history_len
+        self.deque = deque(maxlen=history_len)
+
+    def _step(self, action):
+        obs, reward, done, info = self.env.step(action)
+        return self._contextualize(obs), reward, done, info
+
+    def _reset(self):
+        obs = self.env.reset()
+        return self._contextualize(obs, reset=True)
+
+    def _contextualize(self, obs, reset=False):
+        if reset:
+            for i in range(self.history_len - 1):
+                self.deque.append(np.zeros_like(obs))
+        self.deque.append(obs)
+        return np.concatenate(list(self.deque), axis=-1)
+
 class NoopResetEnv(gym.Wrapper):
     def __init__(self, env=None, noop_max=30):
         """Sample initial states by taking random number of no-ops on reset.

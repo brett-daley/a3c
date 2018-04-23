@@ -24,6 +24,7 @@ def main():
         discount=0.99,
         entropy_bonus=0.01,
         max_sample_length=20,
+        actor_history_len=4,
         n_actors=16,
         wrapper=wrappers.wrap_deepmind,
         max_timesteps=40000000,

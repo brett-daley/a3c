@@ -6,6 +6,7 @@ import threading
 import math
 import time
 import utils
+import wrappers
 
 
 def execute(
@@ -16,6 +17,7 @@ def execute(
         discount,
         entropy_bonus,
         max_sample_length,
+        actor_history_len,
         n_actors,
         max_timesteps,
         wrapper=None,
@@ -26,6 +28,7 @@ def execute(
     def prepare_env(e):
         if wrapper is not None:
             e = wrapper(e)
+        e = wrappers.HistoryWrapper(e, actor_history_len)
         e = gym.wrappers.Monitor(e, 'videos/', force=True, video_callable=lambda episode: False)
         e.seed(utils.random_seed())
         return e
@@ -33,11 +36,12 @@ def execute(
     training_envs = [prepare_env(gym.make(env.spec.id)) for i in range(n_actors)]
     env = prepare_env(env)
 
-    input_shape = env.observation_space.shape
+    input_shape = list(env.observation_space.shape)
+    input_shape[-1] *= actor_history_len
     n_actions   = env.action_space.n
 
     with tf.Session() as session:
-        state_ph      = tf.placeholder(state_dtype, [None] + list(input_shape))
+        state_ph      = tf.placeholder(state_dtype, [None] + input_shape)
         action_ph     = tf.placeholder(tf.int32,    [None])
         return_ph     = tf.placeholder(tf.float32,  [None])
 
