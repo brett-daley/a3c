@@ -20,6 +20,7 @@ def main():
         policy,
         optimizer,
         discount=0.99,
+        Lambda=1.0,
         entropy_bonus=0.01,
         max_sample_length=10,
         actor_history_len=4,
