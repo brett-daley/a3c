@@ -25,7 +25,7 @@ def main():
         max_sample_length=20,
         actor_history_len=1,
         n_actors=16,
-        max_timesteps=1000000,
+        max_timesteps=500000,
     )
 
 

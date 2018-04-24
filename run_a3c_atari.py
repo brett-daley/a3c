@@ -13,7 +13,7 @@ def main():
 
     policy = policies.AtariPolicy
 
-    objective_optimizer = tf.train.RMSPropOptimizer(learning_rate=1e-5, decay=0.999)
+    objective_optimizer = tf.train.RMSPropOptimizer(learning_rate=1e-4, decay=0.99)
     loss_optimizer      = tf.train.RMSPropOptimizer(learning_rate=1e-4, decay=0.99)
 
     a3c.execute(
@@ -27,7 +27,7 @@ def main():
         actor_history_len=4,
         n_actors=16,
         wrapper=wrappers.wrap_deepmind,
-        max_timesteps=40000000,
+        max_timesteps=5000000,
         state_dtype=tf.uint8,
     )
 
