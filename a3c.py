@@ -1,43 +1,49 @@
 import tensorflow as tf
-import tensorflow.contrib.layers as layers
 import numpy as np
 import itertools
 import gym
 import threading
 import math
+import time
 import utils
-
-
-def policy(state, n_actions, scope):
-    with tf.variable_scope(scope):
-        hidden = layers.fully_connected(state,  num_outputs=1024,            activation_fn=tf.nn.relu)
-        hidden = layers.fully_connected(hidden, num_outputs=(n_actions + 1), activation_fn=None)
-
-        action_distr = tf.nn.softmax(hidden[:, :-1])
-        value = hidden[:, -1]
-
-        return action_distr, value
+import wrappers
 
 
 def execute(
         env,
+        policy,
         objective_optimizer,
         loss_optimizer,
         discount,
         entropy_bonus,
         max_sample_length,
+        actor_history_len,
         n_actors,
         max_timesteps,
-        log_every_n_steps=10000,
+        wrapper=None,
+        state_dtype=tf.float32,
+        log_every_n_steps=25000,
     ):
 
-    input_size, = env.observation_space.shape
+    def prepare_env(e):
+        if wrapper is not None:
+            e = wrapper(e)
+        e = wrappers.HistoryWrapper(e, actor_history_len)
+        e = gym.wrappers.Monitor(e, 'videos/', force=True, video_callable=lambda episode: False)
+        e.seed(utils.random_seed())
+        return e
+
+    training_envs = [prepare_env(gym.make(env.spec.id)) for i in range(n_actors)]
+    env = prepare_env(env)
+
+    input_shape = list(env.observation_space.shape)
+    input_shape[-1] *= actor_history_len
     n_actions   = env.action_space.n
 
     with tf.Session() as session:
-        state_ph      = tf.placeholder(tf.float32, [None, input_size])
-        action_ph     = tf.placeholder(tf.int32,   [None])
-        return_ph     = tf.placeholder(tf.float32, [None])
+        state_ph      = tf.placeholder(state_dtype, [None] + input_shape)
+        action_ph     = tf.placeholder(tf.int32,    [None])
+        return_ph     = tf.placeholder(tf.float32,  [None])
 
         action_distr, value = policy(state_ph, n_actions, scope='policy')
         policy_vars = tf.trainable_variables(scope='policy')
@@ -60,29 +66,29 @@ def execute(
 
         session.run(tf.global_variables_initializer())
 
-        shared_counter = utils.Counter()
+        shared_counter = utils.Counter(period=log_every_n_steps)
 
 
         class Actor:
-            def __init__(self, env_id, counter):
-                self.env = gym.make(env_id)
-                self.env = gym.wrappers.Monitor(self.env, 'videos/', force=True, video_callable=lambda e: False)
-                self.env.seed(utils.random_seed())
+            def __init__(self, env, counter):
+                self.env = env
 
                 self.state   = None
                 self.done    = True
 
                 self.counter = counter
-                self.thread  = threading.Thread(target=self._train)
+                self.thread  = None
 
             def start(self):
+                self.thread = threading.Thread(target=self._train)
                 self.thread.start()
 
             def join(self):
+                assert self.thread is not None
                 self.thread.join()
 
             def _train(self):
-                while self.counter.value() < max_timesteps:
+                while not self.counter.is_expired():
                     states, actions, returns = self._sample()
 
                     self.counter.increment(len(states))
@@ -93,7 +99,7 @@ def execute(
                         return_ph: returns,
                     })
 
-            def _policy(self, state):
+            def policy(self, state):
                 distr = session.run(action_distr, feed_dict={state_ph: state[None]})[0]
                 action = np.random.choice(np.arange(n_actions), p=distr)
                 return action
@@ -119,7 +125,7 @@ def execute(
                     if t == max_sample_length or done:
                         break
 
-                    action = self._policy(state)
+                    action = self.policy(state)
 
                     state, reward, done, _ = self.env.step(action)
 
@@ -144,33 +150,48 @@ def execute(
             def get_n_episodes(self):
                 return len(self.env.get_episode_rewards())
 
-            def get_average_reward(self, n):
-                return np.mean(self.env.get_episode_rewards()[-n:])
+
+        def benchmark(actor, n_episodes):
+            for i in range(n_episodes):
+                state = env.reset()
+                done = False
+
+                while not done:
+                    action = actor.policy(state)
+                    state, _, done, _ = env.step(action)
+
+            rewards = env.get_episode_rewards()[-n_episodes:]
+
+            return np.mean(rewards), np.std(rewards)
 
 
-        actors = [Actor(env.spec.id, shared_counter) for i in range(n_actors)]
-        for a in actors:
-            a.start()
+        actors = [Actor(training_envs[i], shared_counter) for i in range(n_actors)]
+        timesteps = 0
+        best_mean_reward = -float('inf')
+        start_time = time.time()
 
-        while True:
-            t = shared_counter.value()
-            # TODO: need a more elegant way to do this
-            import time
-            time.sleep(0.01)
-            T = shared_counter.value()
+        for e in itertools.count():
+            print('Epoch', e)
+            print('Timestep', timesteps)
+            print('Realtime {:.3f}'.format(time.time() - start_time))
+            print('Episodes', sum([a.get_n_episodes() for a in actors]))
 
-            if (T // log_every_n_steps) > (t // log_every_n_steps):
-                window_size = math.ceil(100. / n_actors)
-                n_episodes = sum([a.get_n_episodes() for a in actors])
-                mean_reward = np.mean([a.get_average_reward(window_size) for a in actors])
+            mean_reward, std_reward = benchmark(actors[0], n_episodes=30)
+            best_mean_reward = max(mean_reward, best_mean_reward)
 
-                print('Timesteps', t)
-                print('Episodes', n_episodes)
-                print('Mean reward ({} episodes/thread) {:.3f}'.format(window_size, mean_reward))
-                print(flush=True)
+            print('Mean reward', mean_reward)
+            print('Best mean reward', best_mean_reward)
+            print('Standard dev', std_reward)
+            print(flush=True)
 
-            if T >= max_timesteps:
+            if timesteps >= max_timesteps:
                 break
 
-        for a in actors:
-            a.join()
+            for a in actors:
+                a.start()
+
+            for a in actors:
+                a.join()
+
+            timesteps += shared_counter.value()
+            shared_counter.reset()
