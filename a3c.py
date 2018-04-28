@@ -25,16 +25,18 @@ def execute(
         log_every_n_steps=25000,
     ):
 
-    def prepare_env(e):
+    def prepare_env(e, video=False):
+        e = gym.wrappers.Monitor(e, 'videos/', force=True)
+        if not video:
+            e.video_callable = lambda episode: False
         if wrapper is not None:
             e = wrapper(e)
         e = wrappers.HistoryWrapper(e, actor_history_len)
-        e = gym.wrappers.Monitor(e, 'videos/', force=True, video_callable=lambda episode: False)
         e.seed(utils.random_seed())
         return e
 
     training_envs = [prepare_env(gym.make(env.spec.id)) for i in range(n_actors)]
-    env = prepare_env(env)
+    env = prepare_env(env, video=True)
 
     input_shape = list(env.observation_space.shape)
     input_shape[-1] *= actor_history_len
@@ -148,7 +150,7 @@ def execute(
                 return (rewards + values)
 
             def get_n_episodes(self):
-                return len(self.env.get_episode_rewards())
+                return len(utils.get_episode_rewards(self.env))
 
 
         def benchmark(actor, n_episodes):
@@ -160,7 +162,7 @@ def execute(
                     action = actor.policy(state)
                     state, _, done, _ = env.step(action)
 
-            rewards = env.get_episode_rewards()[-n_episodes:]
+            rewards = utils.get_episode_rewards(env)[-n_episodes:]
 
             return np.mean(rewards), np.std(rewards)
 

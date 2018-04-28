@@ -1,6 +1,7 @@
 import tensorflow as tf
 import numpy as np
 import threading
+import gym
 
 
 def seed_all(seed=None):
@@ -15,6 +16,18 @@ def seed_all(seed=None):
 
 def random_seed():
     return np.random.randint(65536)
+
+
+def get_episode_rewards(env):
+    while True:
+        if 'Monitor' in env.__class__.__name__:
+            break
+        elif isinstance(env, gym.Wrapper):
+            env = env.env
+        else:
+            raise ValueError('No Monitor wrapper around env')
+
+    return env.get_episode_rewards()
 
 
 class Counter:
