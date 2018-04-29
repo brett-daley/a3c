@@ -12,8 +12,7 @@ import wrappers
 def execute(
         env,
         policy,
-        objective_optimizer,
-        loss_optimizer,
+        optimizer,
         discount,
         entropy_bonus,
         max_sample_length,
@@ -52,19 +51,17 @@ def execute(
 
         action_indices = tf.stack([tf.range(tf.size(action_ph)), action_ph], axis=1)
         action_probs = tf.gather_nd(action_distr, action_indices)
-        log_action_probs = tf.log(action_probs + 1e-30) / tf.log(2.)
+        log_action_probs = tf.log(action_probs + 1e-30)
 
         objective = tf.reduce_sum(log_action_probs * (return_ph - tf.stop_gradient(value)))
         loss      = tf.reduce_sum(tf.square(return_ph - value))
         entropy   = entropy_bonus * (-tf.reduce_sum(log_action_probs * action_probs))
 
-        grads_and_vars     = objective_optimizer.compute_gradients(-(objective + entropy), var_list=policy_vars)
-        objective_train_op = objective_optimizer.apply_gradients(grads_and_vars)
+        total_loss = -(objective + entropy) + loss
 
-        grads_and_vars = loss_optimizer.compute_gradients(loss, var_list=policy_vars)
-        loss_train_op  = loss_optimizer.apply_gradients(grads_and_vars)
-
-        train_op = tf.group(*[objective_train_op, loss_train_op])
+        grads_and_vars = optimizer.compute_gradients(total_loss, var_list=policy_vars)
+        grads_and_vars = utils.clip_gradients(grads_and_vars, 10.)
+        train_op = optimizer.apply_gradients(grads_and_vars)
 
         session.run(tf.global_variables_initializer())
 

@@ -12,14 +12,12 @@ def main():
 
     policy = policies.CartPolePolicy
 
-    objective_optimizer = tf.train.RMSPropOptimizer(learning_rate=1e-4, decay=0.999)
-    loss_optimizer      = tf.train.RMSPropOptimizer(learning_rate=1e-3, decay=0.999)
+    optimizer = tf.train.RMSPropOptimizer(learning_rate=1e-3, decay=0.999)
 
     a3c.execute(
         env,
         policy,
-        objective_optimizer,
-        loss_optimizer,
+        optimizer,
         discount=0.99,
         entropy_bonus=0.01,
         max_sample_length=20,

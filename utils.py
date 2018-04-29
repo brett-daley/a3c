@@ -18,6 +18,13 @@ def random_seed():
     return np.random.randint(65536)
 
 
+def clip_gradients(grads_and_vars, clip_value):
+    for i, (grad, var) in enumerate(grads_and_vars):
+        if grad is not None:
+            grads_and_vars[i] = (tf.clip_by_norm(grad, clip_value), var)
+    return grads_and_vars
+
+
 def get_episode_rewards(env):
     while True:
         if 'Monitor' in env.__class__.__name__:
