@@ -45,11 +45,11 @@ def AtariRecurrentPolicy(state, cell, rnn_state, n_actions, scope):
         hidden = layers.convolution2d(hidden, num_outputs=64, kernel_size=3, stride=1, activation_fn=tf.nn.relu)
 
         hidden = layers.flatten(hidden)
-        hidden = tf.expand_dims(hidden, axis=0)
+        hidden = tf.expand_dims(hidden, axis=1)
 
-        hidden, new_rnn_state = tf.nn.dynamic_rnn(cell, inputs=hidden, initial_state=rnn_state, dtype=tf.float32)
+        hidden, new_rnn_state = tf.nn.dynamic_rnn(cell, inputs=hidden, initial_state=rnn_state, dtype=tf.float32, time_major=True)
 
-        hidden = hidden[:, -1]
+        hidden = hidden[:, 0]
         hidden = layers.fully_connected(hidden, num_outputs=(n_actions + 1), activation_fn=None)
 
         action_distr = tf.nn.softmax(hidden[:, :-1])
