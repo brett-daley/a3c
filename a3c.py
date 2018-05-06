@@ -25,8 +25,8 @@ def execute(
     ):
 
     from policies import AtariRecurrentPolicy
-    if type(policy) is AtariRecurrentPolicy:
-        assert (actor_history_len == 1)
+    recurrent = (type(policy) == AtariRecurrentPolicy)
+    assert (not recurrent) or (recurrent and actor_history_len == 1)
 
     def prepare_env(e, video=False):
         e = gym.wrappers.Monitor(e, 'videos/', force=True)
@@ -110,7 +110,7 @@ def execute(
             def policy(self, state, rnn_state):
                 feed_dict = {state_ph: state[None]}
 
-                if new_rnn_state is not None:
+                if recurrent:
                     if rnn_state is not None:
                         feed_dict[rnn_state_tf] = rnn_state
                     distr, rnn_state = session.run([action_distr, new_rnn_state], feed_dict)
