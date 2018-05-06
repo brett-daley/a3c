@@ -24,6 +24,10 @@ def execute(
         log_every_n_steps=25000,
     ):
 
+    from policies import AtariRecurrentPolicy
+    if type(policy) is AtariRecurrentPolicy:
+        assert (actor_history_len == 1)
+
     def prepare_env(e, video=False):
         e = gym.wrappers.Monitor(e, 'videos/', force=True)
         if not video:
@@ -46,7 +50,10 @@ def execute(
         action_ph     = tf.placeholder(tf.int32,    [None])
         return_ph     = tf.placeholder(tf.float32,  [None])
 
-        action_distr, value = policy(state_ph, n_actions, scope='policy')
+        cell = tf.contrib.rnn.BasicLSTMCell(num_units=512)
+        rnn_state_tf = cell.zero_state(1, tf.float32)
+
+        action_distr, value, new_rnn_state = policy(state_ph, cell, rnn_state_tf, n_actions, scope='policy')
         policy_vars = tf.trainable_variables(scope='policy')
 
         action_indices = tf.stack([tf.range(tf.size(action_ph)), action_ph], axis=1)
@@ -73,8 +80,9 @@ def execute(
             def __init__(self, env, counter):
                 self.env = env
 
-                self.state   = None
-                self.done    = True
+                self.state     = None
+                self.rnn_state = None
+                self.done      = True
 
                 self.counter = counter
                 self.thread  = None
@@ -99,10 +107,18 @@ def execute(
                         return_ph: returns,
                     })
 
-            def policy(self, state):
-                distr = session.run(action_distr, feed_dict={state_ph: state[None]})[0]
-                action = np.random.choice(np.arange(n_actions), p=distr)
-                return action
+            def policy(self, state, rnn_state):
+                feed_dict = {state_ph: state[None]}
+
+                if new_rnn_state is not None:
+                    if rnn_state is not None:
+                        feed_dict[rnn_state_tf] = rnn_state
+                    distr, rnn_state = session.run([action_distr, new_rnn_state], feed_dict)
+                else:
+                    distr = session.run(action_distr, feed_dict)
+
+                action = np.random.choice(np.arange(n_actions), p=distr[0])
+                return action, rnn_state
 
             def _value(self, state):
                 return session.run(value, feed_dict={state_ph: state[None]})[0]
@@ -112,12 +128,14 @@ def execute(
                 actions = []
                 rewards = []
 
-                state = self.state
-                done = self.done
+                state     = self.state
+                rnn_state = self.rnn_state
+                done      = self.done
 
                 if done:
-                    state = self.env.reset()
-                    done = False
+                    state     = self.env.reset()
+                    rnn_state = None
+                    done      = False
 
                 states.append(state)
 
@@ -125,7 +143,7 @@ def execute(
                     if t == max_sample_length or done:
                         break
 
-                    action = self.policy(state)
+                    action, rnn_state = self.policy(state, rnn_state)
 
                     state, reward, done, _ = self.env.step(action)
 
@@ -133,8 +151,9 @@ def execute(
                     actions.append(action)
                     rewards.append(reward)
 
-                self.state = state
-                self.done = done
+                self.state     = state
+                self.rnn_state = rnn_state
+                self.done      = done
 
                 return np.array(states[:-1]), np.array(actions), self._compute_returns(rewards)
 
@@ -153,11 +172,12 @@ def execute(
 
         def benchmark(actor, n_episodes):
             for i in range(n_episodes):
-                state = env.reset()
-                done = False
+                state     = env.reset()
+                rnn_state = None
+                done      = False
 
                 while not done:
-                    action = actor.policy(state)
+                    action, rnn_state = actor.policy(state, rnn_state)
                     state, _, done, _ = env.step(action)
 
             rewards = utils.get_episode_rewards(env)[-n_episodes:]
