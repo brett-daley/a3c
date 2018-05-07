@@ -150,7 +150,7 @@ def execute(
                 returns = rewards + (discount * values[1:])
 
                 for i in reversed(range(len(returns) - 1)):
-                    returns[i] += (discount * Lambda) * (returns[i+1] - values[i])
+                    returns[i] += (discount * Lambda) * (returns[i+1] - values[i+1])
 
                 return returns
 
