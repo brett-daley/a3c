@@ -94,11 +94,12 @@ def execute(
 
                     self.counter.increment(len(states))
 
-                    session.run(train_op, feed_dict={
-                        state_ph:  states,
-                        action_ph: actions,
-                        return_ph: returns,
-                    })
+                    for i in range(0, len(states), max_sample_length):
+                        session.run(train_op, feed_dict={
+                            state_ph:  states[i:i+max_sample_length],
+                            action_ph: actions[i:i+max_sample_length],
+                            return_ph: returns[i:i+max_sample_length],
+                        })
 
             def policy(self, state):
                 distr = session.run(action_distr, feed_dict={state_ph: state[None]})[0]
@@ -123,7 +124,7 @@ def execute(
                 states.append(state)
 
                 for t in itertools.count():
-                    if t == max_sample_length or done:
+                    if done:
                         break
 
                     action = self.policy(state)
