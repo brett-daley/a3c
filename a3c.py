@@ -94,7 +94,10 @@ def execute(
 
                     self.counter.increment(len(states))
 
-                    for i in range(0, len(states), max_sample_length):
+                    idxes = [i for i in range(0, len(states), max_sample_length)]
+                    np.random.shuffle(idxes)
+
+                    for i in idxes:
                         session.run(train_op, feed_dict={
                             state_ph:  states[i:i+max_sample_length],
                             action_ph: actions[i:i+max_sample_length],
