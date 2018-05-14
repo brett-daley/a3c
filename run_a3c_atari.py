@@ -26,7 +26,7 @@ def main():
         optimizer,
         discount=0.99,
         entropy_bonus=0.01,
-        max_sample_length=5,
+        max_sample_length=10,
         actor_history_len=4,
         n_actors=16,
         wrapper=wrappers.wrap_deepmind,

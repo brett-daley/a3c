@@ -59,9 +59,12 @@ def execute(
 
         total_loss = -(objective + entropy) + loss
 
-        grads = tf.gradients(total_loss, policy_vars)
-        grads, _ = tf.clip_by_global_norm(grads, 100.)
-        grads_and_vars = list(zip(grads, policy_vars))
+        grads_and_vars = optimizer.compute_gradients(total_loss, var_list=policy_vars)
+
+        for i, (grad, var) in enumerate(grads_and_vars):
+            if grad is not None:
+                grads_and_vars[i] = (tf.clip_by_value(grad, -5., 5.), var)
+
         train_op = optimizer.apply_gradients(grads_and_vars)
 
         session.run(tf.global_variables_initializer())
