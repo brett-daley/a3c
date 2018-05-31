@@ -1,17 +1,17 @@
 import tensorflow as tf
-import tensorflow.contrib.layers as layers
+from tensorflow.python.layers.layers import *
 
 
 def CartPolePolicy(state, n_actions, scope):
     with tf.variable_scope(scope):
         hidden = state
-        hidden = layers.fully_connected(hidden, num_outputs=1024,            activation_fn=tf.nn.relu)
-        hidden = layers.fully_connected(hidden, num_outputs=(n_actions + 1), activation_fn=None)
+        hidden = dense(hidden, units=64, activation=tf.nn.tanh)
+        hidden = dense(hidden, units=64, activation=tf.nn.tanh)
 
-        action_distr = tf.nn.softmax(hidden[:, :-1])
-        value = hidden[:, -1]
+        action_distr = dense(hidden, units=n_actions, activation=tf.nn.softmax)
+        value        = dense(hidden, units=1,         activation=None)[:, 0]
 
-        return action_distr, value
+    return action_distr, value
 
 
 def AtariPolicy(state, n_actions, scope):
@@ -19,15 +19,14 @@ def AtariPolicy(state, n_actions, scope):
 
     with tf.variable_scope(scope):
         hidden = state
-        hidden = layers.convolution2d(hidden, num_outputs=32, kernel_size=8, stride=4, activation_fn=tf.nn.relu)
-        hidden = layers.convolution2d(hidden, num_outputs=64, kernel_size=4, stride=2, activation_fn=tf.nn.relu)
-        hidden = layers.convolution2d(hidden, num_outputs=64, kernel_size=3, stride=1, activation_fn=tf.nn.relu)
+        hidden = conv2d(hidden, filters=32, kernel_size=8, strides=4, activation=tf.nn.relu)
+        hidden = conv2d(hidden, filters=64, kernel_size=4, strides=2, activation=tf.nn.relu)
+        hidden = conv2d(hidden, filters=64, kernel_size=3, strides=1, activation=tf.nn.relu)
 
-        hidden = layers.flatten(hidden)
-        hidden = layers.fully_connected(hidden, num_outputs=512,             activation_fn=tf.nn.relu)
-        hidden = layers.fully_connected(hidden, num_outputs=(n_actions + 1), activation_fn=None)
+        hidden = flatten(hidden)
+        hidden = dense(hidden, units=512, activation=tf.nn.relu)
 
-        action_distr = tf.nn.softmax(hidden[:, :-1])
-        value = hidden[:, -1]
+        action_distr = dense(hidden, units=n_actions, activation=tf.nn.softmax)
+        value        = dense(hidden, units=1,         activation=None)[:, 0]
 
-        return action_distr, value
+    return action_distr, value
