@@ -22,6 +22,7 @@ def execute(
         wrapper=None,
         state_dtype=tf.float32,
         log_every_n_steps=25000,
+        grad_clip=100.,
     ):
 
     def prepare_env(e, video=False):
@@ -47,24 +48,18 @@ def execute(
         return_ph     = tf.placeholder(tf.float32,  [None])
 
         action_distr, value = policy(state_ph, n_actions, scope='policy')
-        policy_vars = tf.trainable_variables(scope='policy')
 
         action_indices = tf.stack([tf.range(tf.size(action_ph)), action_ph], axis=1)
         action_probs = tf.gather_nd(action_distr, action_indices)
-        log_action_probs = tf.log(action_probs + 1e-10)
 
-        objective = tf.reduce_sum(log_action_probs * (return_ph - tf.stop_gradient(value)))
-        loss      = 0.5 * tf.reduce_sum(tf.square(return_ph - value))
-        entropy   = entropy_bonus * (-tf.reduce_sum(log_action_probs * action_probs))
+        objective = tf.reduce_mean(tf.log(action_probs + 1e-10) * (return_ph - tf.stop_gradient(value)))
+        loss      = tf.reduce_mean(tf.square(return_ph - value))
+        entropy   = (-entropy_bonus) * tf.reduce_mean(
+                        tf.reduce_sum(action_distr * tf.log(action_distr + 1e-10), axis=1)
+                    )
 
-        total_loss = -(objective + entropy) + loss
-
-        grads_and_vars = optimizer.compute_gradients(total_loss, var_list=policy_vars)
-
-        for i, (grad, var) in enumerate(grads_and_vars):
-            if grad is not None:
-                grads_and_vars[i] = (tf.clip_by_value(grad, -5., 5.), var)
-
+        grads_and_vars = optimizer.compute_gradients(loss - (objective + entropy))
+        grads_and_vars = [(tf.clip_by_value(g, -grad_clip, +grad_clip), v) for g, v in grads_and_vars]
         train_op = optimizer.apply_gradients(grads_and_vars)
 
         session.run(tf.global_variables_initializer())
