@@ -30,6 +30,18 @@ def get_episode_rewards(env):
     return env.get_episode_rewards()
 
 
+def benchmark(env, policy, n_episodes):
+    for i in range(n_episodes):
+        state = env.reset()
+        done = False
+
+        while not done:
+            action = policy(state)
+            state, _, done, _ = env.step(action)
+
+    return get_episode_rewards(env)[-n_episodes:]
+
+
 class Counter:
     def __init__(self, period):
         self._period = period

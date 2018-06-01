@@ -36,7 +36,7 @@ def execute(
         return e
 
     training_envs = [prepare_env(gym.make(env.spec.id)) for i in range(n_actors)]
-    env = prepare_env(env, video=True)
+    env = prepare_env(env)
 
     input_shape = list(env.observation_space.shape)
     input_shape[-1] *= actor_history_len
@@ -70,6 +70,7 @@ def execute(
         class Actor:
             def __init__(self, env, counter):
                 self.env = env
+                self.epoch_begin = 0
 
                 self.state   = None
                 self.done    = True
@@ -145,22 +146,16 @@ def execute(
 
                 return (rewards + values)
 
-            def get_n_episodes(self):
-                return len(utils.get_episode_rewards(self.env))
+            def _get_episode_rewards(self):
+                return utils.get_episode_rewards(self.env)
 
+            def get_total_episodes(self):
+                return len(self._get_episode_rewards())
 
-        def benchmark(actor, n_episodes):
-            for i in range(n_episodes):
-                state = env.reset()
-                done = False
-
-                while not done:
-                    action = actor.policy(state)
-                    state, _, done, _ = env.step(action)
-
-            rewards = utils.get_episode_rewards(env)[-n_episodes:]
-
-            return np.mean(rewards), np.std(rewards)
+            def get_epoch_rewards(self):
+                rewards = self._get_episode_rewards()[self.epoch_begin:]
+                self.epoch_begin = self.get_total_episodes()
+                return rewards
 
 
         actors = [Actor(training_envs[i], shared_counter) for i in range(n_actors)]
@@ -168,13 +163,21 @@ def execute(
         best_mean_reward = -float('inf')
         start_time = time.time()
 
-        for e in itertools.count():
-            print('Epoch', e)
+        for epoch in itertools.count():
+            print('Epoch', epoch)
             print('Timestep', timesteps)
             print('Realtime {:.3f}'.format(time.time() - start_time))
-            print('Episodes', sum([a.get_n_episodes() for a in actors]))
+            print('Episodes', sum([a.get_total_episodes() for a in actors]))
 
-            mean_reward, std_reward = benchmark(actors[0], n_episodes=30)
+            if epoch == 0:
+                rewards = utils.benchmark(env, actors[0].policy, n_episodes=100)
+            else:
+                rewards = list(itertools.chain.from_iterable(
+                              [a.get_epoch_rewards() for a in actors]
+                          ))
+
+            mean_reward = np.mean(rewards)
+            std_reward = np.std(rewards)
             best_mean_reward = max(mean_reward, best_mean_reward)
 
             print('Mean reward', mean_reward)
