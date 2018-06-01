@@ -13,12 +13,7 @@ def main():
 
     policy = policies.AtariPolicy
 
-    optimizer = tf.train.AdamOptimizer(
-        learning_rate=1e-4,
-        beta1=0.99,
-        use_locking=True,
-        epsilon=1e-4,
-    )
+    optimizer = tf.train.AdamOptimizer(learning_rate=5e-5, use_locking=True)
 
     a3c.execute(
         env,
@@ -30,8 +25,10 @@ def main():
         actor_history_len=4,
         n_actors=16,
         wrapper=wrappers.wrap_deepmind,
-        max_timesteps=5000000,
+        max_timesteps=10000000,
         state_dtype=tf.uint8,
+        log_every_n_steps=250000,
+        grad_clip=40.,
     )
 
 

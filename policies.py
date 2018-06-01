@@ -5,8 +5,8 @@ from tensorflow.python.layers.layers import *
 def CartPolePolicy(state, n_actions, scope):
     with tf.variable_scope(scope):
         hidden = state
-        hidden = dense(hidden, units=64, activation=tf.nn.tanh)
-        hidden = dense(hidden, units=64, activation=tf.nn.tanh)
+        hidden = dense(hidden, units=512, activation=tf.nn.tanh)
+        hidden = dense(hidden, units=512, activation=tf.nn.tanh)
 
         action_distr = dense(hidden, units=n_actions, activation=tf.nn.softmax)
         value        = dense(hidden, units=1,         activation=None)[:, 0]

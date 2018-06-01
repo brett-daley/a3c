@@ -12,7 +12,7 @@ def main():
 
     policy = policies.CartPolePolicy
 
-    optimizer = tf.train.RMSPropOptimizer(learning_rate=1e-4, decay=0.99)
+    optimizer = tf.train.AdamOptimizer(learning_rate=5e-5, use_locking=True)
 
     a3c.execute(
         env,
@@ -23,7 +23,7 @@ def main():
         max_sample_length=20,
         actor_history_len=1,
         n_actors=16,
-        max_timesteps=500000,
+        max_timesteps=1000000,
     )
 
 
