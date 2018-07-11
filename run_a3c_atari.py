@@ -1,5 +1,7 @@
 import gym
 import tensorflow as tf
+import argparse
+
 import a3c
 import utils
 import policies
@@ -7,7 +9,13 @@ import wrappers
 
 
 def main():
-    env = gym.make(gym.benchmark_spec('Atari200M').tasks[3].env_id)
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--env',         type=str,   default='PongNoFrameskip-v3')
+    parser.add_argument('--Lambda',      type=float, default=1.0)
+    parser.add_argument('--history_len', type=int,   default=4)
+    args = parser.parse_args()
+
+    env = gym.make(args.env)
 
     utils.seed_all(seed=0)
 
@@ -20,10 +28,10 @@ def main():
         policy,
         optimizer,
         discount=0.99,
-        Lambda=1.0,
+        Lambda=args.Lambda,
         entropy_bonus=0.01,
         max_sample_length=10,
-        actor_history_len=4,
+        actor_history_len=args.history_len,
         n_actors=16,
         wrapper=wrappers.wrap_deepmind,
         max_timesteps=10000000,
