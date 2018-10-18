@@ -13,15 +13,16 @@ def main():
     parser.add_argument('--env',         type=str,   default='PongNoFrameskip-v3')
     parser.add_argument('--Lambda',      type=float, default=1.0)
     parser.add_argument('--history_len', type=int,   default=4)
+    parser.add_argument('--seed',        type=int,   default=0)
     args = parser.parse_args()
 
     env = gym.make(args.env)
 
-    utils.seed_all(seed=0)
+    utils.seed_all(seed=args.seed)
 
     policy = policies.AtariPolicy
 
-    optimizer = tf.train.AdamOptimizer(learning_rate=5e-5, use_locking=True)
+    optimizer = tf.train.AdamOptimizer(learning_rate=5e-5, epsilon=1e-4, use_locking=True)
 
     a3c.execute(
         env,

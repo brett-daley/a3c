@@ -47,6 +47,7 @@ def execute(
         state_ph      = tf.placeholder(state_dtype, [None] + input_shape)
         action_ph     = tf.placeholder(tf.int32,    [None])
         return_ph     = tf.placeholder(tf.float32,  [None])
+        return_ph2   = tf.placeholder(tf.float32, [None])
 
         action_distr, value = policy(state_ph, n_actions, scope='policy')
 
@@ -54,7 +55,7 @@ def execute(
         action_probs = tf.gather_nd(action_distr, action_indices)
 
         objective = tf.reduce_mean(tf.log(action_probs + 1e-30) * (return_ph - tf.stop_gradient(value)))
-        loss      = tf.reduce_mean(tf.square(return_ph - value))
+        loss      = tf.reduce_mean(tf.square(return_ph2 - value))
         entropy   = (-entropy_bonus) * tf.reduce_mean(
                         tf.reduce_sum(action_distr * tf.log(action_distr + 1e-30), axis=1)
                     )
@@ -90,7 +91,7 @@ def execute(
 
             def _train(self):
                 while not self.counter.is_expired():
-                    states, actions, returns = self._sample()
+                    states, actions, returns, returns2 = self._sample()
 
                     self.counter.increment(len(states))
 
@@ -98,6 +99,7 @@ def execute(
                         state_ph:  states,
                         action_ph: actions,
                         return_ph: returns,
+                        return_ph2: returns2,
                     })
 
             def policy(self, state):
@@ -141,7 +143,13 @@ def execute(
                 actions = np.array(actions)
                 rewards = np.array(rewards)
 
-                return states[:-1], actions, self._compute_returns(states, rewards)
+                self.lambd = 1.0
+                returns = self._compute_returns(states, rewards)
+
+                self.lambd = Lambda
+                returns2 = self._compute_returns(states, rewards)
+
+                return states[:-1], actions, returns, returns2
 
             def _compute_returns(self, states, rewards):
                 values = self._value(states)
@@ -150,7 +158,7 @@ def execute(
                 returns = rewards + (discount * values[1:])
 
                 for i in reversed(range(len(returns) - 1)):
-                    returns[i] += (discount * Lambda) * (returns[i+1] - values[i+1])
+                    returns[i] += (discount * self.lambd) * (returns[i+1] - values[i+1])
 
                 return returns
 
