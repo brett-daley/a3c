@@ -10,7 +10,7 @@ import wrappers
 
 
 def execute(
-        env,
+        make_env,
         policy,
         optimizer,
         discount,
@@ -19,28 +19,26 @@ def execute(
         actor_history_len,
         n_actors,
         max_timesteps,
-        wrapper=None,
         state_dtype=tf.float32,
         log_every_n_steps=25000,
         grad_clip=None,
     ):
 
-    def prepare_env(e, video=False):
-        e = gym.wrappers.Monitor(e, 'videos/', force=True)
-        if not video:
-            e.video_callable = lambda episode: False
-        if wrapper is not None:
-            e = wrapper(e)
-        e = wrappers.HistoryWrapper(e, actor_history_len)
-        e.seed(utils.random_seed())
-        return e
+    def wrapped_and_seeded_env():
+        from gym.wrappers.monitor import Monitor
 
-    training_envs = [prepare_env(gym.make(env.spec.id)) for i in range(n_actors)]
-    env = prepare_env(env)
+        env = make_env()
+        env = wrappers.HistoryWrapper(env, actor_history_len)
+        env = Monitor(env, 'videos/', force=True, video_callable=lambda e: False)
+        env.seed(utils.random_seed())
+        return env
 
-    input_shape = list(env.observation_space.shape)
+    training_envs = [wrapped_and_seeded_env() for i in range(n_actors)]
+    benchmark_env = wrapped_and_seeded_env()
+
+    input_shape = list(benchmark_env.observation_space.shape)
     input_shape[-1] *= actor_history_len
-    n_actions   = env.action_space.n
+    n_actions   = benchmark_env.action_space.n
 
     with tf.Session() as session:
         state_ph      = tf.placeholder(state_dtype, [None] + input_shape)
@@ -171,7 +169,7 @@ def execute(
             print('Episodes', sum([a.get_total_episodes() for a in actors]))
 
             if epoch == 0:
-                rewards = utils.benchmark(env, actors[0].policy, n_episodes=100)
+                rewards = utils.benchmark(benchmark_env, actors[0].policy, n_episodes=100)
             else:
                 rewards = list(itertools.chain.from_iterable(
                               [a.get_epoch_rewards() for a in actors]

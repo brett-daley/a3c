@@ -6,7 +6,7 @@ import policies
 
 
 def main():
-    env = gym.make('CartPole-v0')
+    env_name = 'CartPole-v0'
 
     utils.seed_all(seed=0)
 
@@ -15,7 +15,7 @@ def main():
     optimizer = tf.train.AdamOptimizer(learning_rate=5e-5, use_locking=True)
 
     a3c.execute(
-        env,
+        lambda: gym.make(env_name),
         policy,
         optimizer,
         discount=0.99,
