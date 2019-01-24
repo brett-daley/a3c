@@ -10,8 +10,9 @@ import wrappers
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--env',         type=str,   default='PongNoFrameskip-v3')
-    parser.add_argument('--Lambda',      type=float, default=1.0)
+    parser.add_argument('--env',         type=str,   default='PongNoFrameskip-v4')
+    parser.add_argument('--lambda-pi',   type=float, default=1.0)
+    parser.add_argument('--lambda-ve',   type=float, default=1.0)
     parser.add_argument('--history_len', type=int,   default=4)
     parser.add_argument('--seed',        type=int,   default=0)
     args = parser.parse_args()
@@ -29,7 +30,8 @@ def main():
         policy,
         optimizer,
         discount=0.99,
-        Lambda=args.Lambda,
+        lambda_pi=args.lambda_pi,
+        lambda_ve=args.lambda_ve,
         entropy_bonus=0.01,
         max_sample_length=10,
         actor_history_len=args.history_len,

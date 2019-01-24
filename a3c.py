@@ -14,7 +14,8 @@ def execute(
         policy,
         optimizer,
         discount,
-        Lambda,
+        lambda_pi,
+        lambda_ve,
         entropy_bonus,
         max_sample_length,
         actor_history_len,
@@ -143,8 +144,8 @@ def execute(
                 actions = np.array(actions)
                 rewards = np.array(rewards)
 
-                pi_returns = self._compute_returns(states, rewards)
-                ve_returns = self._compute_returns(states, rewards, lambd=Lambda)
+                pi_returns = self._compute_returns(states, rewards, lambd=lambda_pi)
+                ve_returns = self._compute_returns(states, rewards, lambd=lambda_ve)
 
                 return states[:-1], actions, pi_returns, ve_returns
 
