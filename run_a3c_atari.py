@@ -20,7 +20,7 @@ def main():
     parser.add_argument('--env',         type=str,   default='pong')
     parser.add_argument('--lambda-pi',   type=float, default=1.0)
     parser.add_argument('--lambda-ve',   type=float, default=1.0)
-    parser.add_argument('--history_len', type=int,   default=4)
+    parser.add_argument('--history-len', type=int,   default=4)
     parser.add_argument('--seed',        type=int,   default=0)
     args = parser.parse_args()
 
