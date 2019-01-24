@@ -19,6 +19,8 @@ def main():
         policy,
         optimizer,
         discount=0.99,
+        lambda_pi=1.0,
+        lambda_ve=1.0,
         entropy_bonus=0.01,
         max_sample_length=20,
         actor_history_len=1,

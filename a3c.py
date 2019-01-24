@@ -14,6 +14,8 @@ def execute(
         policy,
         optimizer,
         discount,
+        lambda_pi,
+        lambda_ve,
         entropy_bonus,
         max_sample_length,
         actor_history_len,
@@ -43,17 +45,18 @@ def execute(
     with tf.Session() as session:
         state_ph      = tf.placeholder(state_dtype, [None] + input_shape)
         action_ph     = tf.placeholder(tf.int32,    [None])
-        return_ph     = tf.placeholder(tf.float32,  [None])
+        pi_return_ph  = tf.placeholder(tf.float32,  [None])
+        ve_return_ph  = tf.placeholder(tf.float32,  [None])
 
         action_distr, value = policy(state_ph, n_actions, scope='policy')
 
         action_indices = tf.stack([tf.range(tf.size(action_ph)), action_ph], axis=1)
         action_probs = tf.gather_nd(action_distr, action_indices)
 
-        objective = tf.reduce_mean(tf.log(action_probs + 1e-30) * (return_ph - tf.stop_gradient(value)))
-        loss      = tf.reduce_mean(tf.square(return_ph - value))
+        objective = tf.reduce_mean(tf.log(action_probs + 1e-10) * (pi_return_ph - tf.stop_gradient(value)))
+        loss      = tf.reduce_mean(tf.square(ve_return_ph - value))
         entropy   = (-entropy_bonus) * tf.reduce_mean(
-                        tf.reduce_sum(action_distr * tf.log(action_distr + 1e-30), axis=1)
+                        tf.reduce_sum(action_distr * tf.log(action_distr + 1e-10), axis=1)
                     )
 
         grads_and_vars = optimizer.compute_gradients(loss - (objective + entropy))
@@ -87,14 +90,15 @@ def execute(
 
             def _train(self):
                 while not self.counter.is_expired():
-                    states, actions, returns = self._sample()
+                    states, actions, pi_returns, ve_returns = self._sample()
 
                     self.counter.increment(len(states))
 
                     session.run(train_op, feed_dict={
-                        state_ph:  states,
-                        action_ph: actions,
-                        return_ph: returns,
+                        state_ph:     states,
+                        action_ph:    actions,
+                        pi_return_ph: pi_returns,
+                        ve_return_ph: ve_returns,
                     })
 
             def policy(self, state):
@@ -102,8 +106,8 @@ def execute(
                 action = np.random.choice(np.arange(n_actions), p=distr)
                 return action
 
-            def _value(self, state):
-                return session.run(value, feed_dict={state_ph: state[None]})[0]
+            def _value(self, states):
+                return session.run(value, feed_dict={state_ph: states})
 
             def _sample(self):
                 states  = []
@@ -134,16 +138,25 @@ def execute(
                 self.state = state
                 self.done = done
 
-                return np.array(states[:-1]), np.array(actions), self._compute_returns(rewards)
+                states  = np.array(states)
+                actions = np.array(actions)
+                rewards = np.array(rewards)
 
-            def _compute_returns(self, rewards):
-                last_value = 0. if self.done else self._value(self.state)
-                values = last_value * np.array([discount**(i+1) for i in reversed(range(len(rewards)))])
+                pi_returns = self._compute_returns(states, rewards, lambd=lambda_pi)
+                ve_returns = self._compute_returns(states, rewards, lambd=lambda_ve)
 
-                for i in reversed(range(len(rewards) - 1)):
-                    rewards[i] += discount * rewards[i+1]
+                return states[:-1], actions, pi_returns, ve_returns
 
-                return (rewards + values)
+            def _compute_returns(self, states, rewards, lambd=1.0):
+                values = self._value(states)
+                if self.done:
+                    values[-1] = 0.
+                returns = rewards + (discount * values[1:])
+
+                for i in reversed(range(len(returns) - 1)):
+                    returns[i] += (discount * lambd) * (returns[i+1] - values[i+1])
+
+                return returns
 
             def _get_episode_rewards(self):
                 return utils.get_episode_rewards(self.env)
