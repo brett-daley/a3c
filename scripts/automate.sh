@@ -1,7 +1,7 @@
 #!/bin/bash
 
 PYTHON_CMD="`which python` run_a3c_atari.py"
-OUTPUT_DIR='lambda1_for_PI'
+OUTPUT_DIR='output'
 
 ENVS='PongNoFrameskip-v4 BreakoutNoFrameskip-v4 SeaquestNoFrameskip-v4 QbertNoFrameskip-v4'
 LAMBDAS='0.6 0.7 0.8 1.0'
