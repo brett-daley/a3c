@@ -31,7 +31,7 @@ def execute(
 
         env = make_env()
         env = wrappers.HistoryWrapper(env, actor_history_len)
-        env = Monitor(env, 'videos/', force=True, video_callable=lambda e: False)
+        env = Monitor(env, 'videos/', video_callable=lambda e: False)
         env.seed(utils.random_seed())
         return env
 

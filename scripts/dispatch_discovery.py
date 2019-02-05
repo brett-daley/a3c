@@ -7,10 +7,11 @@ template = '''#!/bin/bash
 #SBATCH --output={log_path}
 #SBATCH --error={log_path}
 #SBATCH --partition=gpu
-#SBATCH --nodes 1
-#SBATCH --ntasks 1
-#SBATCH --mem=8192
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
 #SBATCH --cpus-per-task=16
+#SBATCH --gres=gpu:1
+#SBATCH --mem=8192
 
 echo start at $(date)
 python {runner_path} --env {env} --history-len {history_len} --lambda-ve {lambda_ve} --seed {seed} &> {results_path}
@@ -22,50 +23,16 @@ history_lens = [1, 4]
 seeds = [0, 1, 2]
 
 environments = [
-    'alien',
-    'asterix',
-    'asteroids',
-    'atlantis',
-    'battle_zone',
-    'beam_rider',
-    'berzerk',
-    'bowling',
-    'boxing',
     'breakout',
-    'chopper_command',
-    'crazy_climber',
-    'demon_attack',
-    'elevator_action',
-    'enduro',
+    'beam_rider',
+    'centipede',
     'fishing_derby',
-    'freeway',
-    'frostbite',
-    'gravitar',
-    'ice_hockey',
-    'jamesbond',
-    'kangaroo',
-    'krull',
-    'kung_fu_master',
-    'montezuma_revenge',
-    'ms_pacman',
     'name_this_game',
-    'phoenix',
-    'pitfall',
     'pong',
-    'private_eye',
     'qbert',
-    'riverraid',
     'road_runner',
-    'robotank',
     'seaquest',
-    'solaris',
     'space_invaders',
-    'star_gunner',
-    'time_pilot',
-    'up_n_down',
-    'venture',
-    'yars_revenge',
-    'zaxxon',
 ]
 
 
