@@ -12,6 +12,10 @@ class HistoryWrapper(gym.Wrapper):
         self.history_len = history_len
         self.deque = deque(maxlen=history_len)
 
+        shape = list(self.observation_space.shape)
+        shape[-1] *= history_len
+        self.observation_space.shape = tuple(shape)
+
     def step(self, action):
         obs, reward, done, info = self.env.step(action)
         return self._contextualize(obs), reward, done, info
@@ -44,7 +48,7 @@ class NoopResetEnv(gym.Wrapper):
         self.env.reset()
         noops = np.random.randint(1, self.noop_max + 1)
         for _ in range(noops):
-            obs, _, _, _ = self.env.step(0)
+            obs, _, _, _ = self.step(0)
         return obs
 
 class FireResetEnv(gym.Wrapper):
@@ -59,8 +63,8 @@ class FireResetEnv(gym.Wrapper):
 
     def reset(self):
         self.env.reset()
-        obs, _, _, _ = self.env.step(1)
-        obs, _, _, _ = self.env.step(2)
+        obs, _, _, _ = self.step(1)
+        obs, _, _, _ = self.step(2)
         return obs
 
 class EpisodicLifeEnv(gym.Wrapper):
@@ -117,10 +121,10 @@ class ClippedRewardsWrapper(gym.RewardWrapper):
         return np.sign(reward)
 
 def wrap_deepmind_ram(env):
-    env = EpisodicLifeEnv(env)
-    env = NoopResetEnv(env, noop_max=20)
     if 'FIRE' in env.unwrapped.get_action_meanings():
         env = FireResetEnv(env)
+    env = NoopResetEnv(env, noop_max=20)
+    env = EpisodicLifeEnv(env)
     env = ClippedRewardsWrapper(env)
     return env
 

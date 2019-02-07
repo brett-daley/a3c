@@ -18,7 +18,6 @@ def execute(
         lambda_ve,
         entropy_bonus,
         max_sample_length,
-        actor_history_len,
         n_actors,
         max_timesteps,
         state_dtype=tf.float32,
@@ -26,24 +25,14 @@ def execute(
         grad_clip=None,
     ):
 
-    def wrapped_and_seeded_env():
-        from gym.wrappers.monitor import Monitor
+    training_envs = [make_env() for i in range(n_actors)]
+    benchmark_env = make_env()
 
-        env = make_env()
-        env = wrappers.HistoryWrapper(env, actor_history_len)
-        env = Monitor(env, 'videos/', video_callable=lambda e: False)
-        env.seed(utils.random_seed())
-        return env
-
-    training_envs = [wrapped_and_seeded_env() for i in range(n_actors)]
-    benchmark_env = wrapped_and_seeded_env()
-
-    input_shape = list(benchmark_env.observation_space.shape)
-    input_shape[-1] *= actor_history_len
+    input_shape = benchmark_env.observation_space.shape
     n_actions   = benchmark_env.action_space.n
 
     with tf.Session() as session:
-        state_ph      = tf.placeholder(state_dtype, [None] + input_shape)
+        state_ph      = tf.placeholder(state_dtype, [None] + list(input_shape))
         action_ph     = tf.placeholder(tf.int32,    [None])
         pi_return_ph  = tf.placeholder(tf.float32,  [None])
         ve_return_ph  = tf.placeholder(tf.float32,  [None])

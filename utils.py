@@ -19,15 +19,11 @@ def random_seed():
 
 
 def get_episode_rewards(env):
-    while True:
-        if 'Monitor' in env.__class__.__name__:
-            break
-        elif isinstance(env, gym.Wrapper):
-            env = env.env
-        else:
-            raise ValueError('No Monitor wrapper around env')
-
-    return env.get_episode_rewards()
+    if isinstance(env, gym.wrappers.Monitor):
+        return env.get_episode_rewards()
+    elif hasattr(env, 'env'):
+        return get_episode_rewards(env.env)
+    raise ValueError('No Monitor wrapper around env')
 
 
 def benchmark(env, policy, n_episodes):

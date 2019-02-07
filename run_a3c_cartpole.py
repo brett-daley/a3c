@@ -5,6 +5,13 @@ import utils
 import policies
 
 
+def make_env(name):
+    env = gym.make(name)
+    env = gym.wrappers.Monitor(env, 'videos/', force=True, video_callable=lambda e: False)
+    env.seed(utils.random_seed())
+    return env
+
+
 def main():
     env_name = 'CartPole-v0'
 
@@ -15,7 +22,7 @@ def main():
     optimizer = tf.train.AdamOptimizer(learning_rate=5e-5, use_locking=True)
 
     a3c.execute(
-        lambda: gym.make(env_name),
+        lambda: make_env(env_name),
         policy,
         optimizer,
         discount=0.99,
@@ -23,7 +30,6 @@ def main():
         lambda_ve=1.0,
         entropy_bonus=0.01,
         max_sample_length=20,
-        actor_history_len=1,
         n_actors=16,
         max_timesteps=1000000,
     )

@@ -8,10 +8,14 @@ import policies
 import wrappers
 
 
-def make_atari_env(name):
+def make_atari_env(name, history_len):
     from gym.envs.atari.atari_env import AtariEnv
+    from gym.wrappers.monitor import Monitor
     env = AtariEnv(game=name, frameskip=4, obs_type='image')
+    env = Monitor(env, 'videos/', force=True, video_callable=lambda e: False)
     env = wrappers.wrap_deepmind(env)
+    env = wrappers.HistoryWrapper(env, history_len)
+    env.seed(utils.random_seed())
     return env
 
 
@@ -31,7 +35,7 @@ def main():
     optimizer = tf.train.AdamOptimizer(learning_rate=5e-5, epsilon=1e-4, use_locking=True)
 
     a3c.execute(
-        lambda: make_atari_env(args.env),
+        lambda: make_atari_env(args.env, args.history_len),
         policy,
         optimizer,
         discount=0.99,
@@ -39,7 +43,6 @@ def main():
         lambda_ve=args.lambda_ve,
         entropy_bonus=0.01,
         max_sample_length=10,
-        actor_history_len=args.history_len,
         n_actors=16,
         max_timesteps=10000000,
         state_dtype=tf.uint8,
