@@ -1,7 +1,8 @@
 import tensorflow as tf
 import numpy as np
-import threading
 import gym
+from threading import Lock
+from collections import deque
 
 
 def seed_all(seed=None):
@@ -38,13 +39,13 @@ def benchmark(env, policy, n_episodes):
     return get_episode_rewards(env)[-n_episodes:]
 
 
-class Counter:
+class ThreadsafeCounter:
     def __init__(self, period):
         self._period = period
         self._value = 0
         self._expiration = period
 
-        self._lock = threading.Lock()
+        self._lock = Lock()
 
     def value(self):
         return self._value
@@ -60,3 +61,25 @@ class Counter:
     def reset(self):
         self._expiration = self._period - (self._value - self._expiration)
         self._value = 0
+
+
+class ThreadsafeRewards:
+    def __init__(self, maxlen):
+        self.rewards = deque(maxlen=maxlen)
+        self.lock = Lock()
+
+    def append(self, reward):
+        self.lock.acquire()
+        self.rewards.append(reward)
+        self.lock.release()
+
+    def extend(self, rewards):
+        self.lock.acquire()
+        self.rewards.extend(rewards)
+        self.lock.release()
+
+    def mean(self):
+        return np.mean(self.rewards)
+
+    def std(self):
+        return np.std(self.rewards)

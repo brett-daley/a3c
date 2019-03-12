@@ -2,7 +2,7 @@ import gym
 import tensorflow as tf
 import a3c
 import utils
-import policies
+from policies import CartPolePolicy
 
 
 def make_env(name):
@@ -17,13 +17,11 @@ def main():
 
     utils.seed_all(seed=0)
 
-    policy = policies.CartPolePolicy
-
     optimizer = tf.train.AdamOptimizer(learning_rate=5e-5, use_locking=True)
 
     a3c.execute(
         lambda: make_env(env_name),
-        policy,
+        CartPolePolicy,
         optimizer,
         discount=0.99,
         lambda_pi=1.0,
@@ -32,6 +30,7 @@ def main():
         max_sample_length=20,
         n_actors=16,
         max_timesteps=1000000,
+        log_every_n_steps=10000,
     )
 
 

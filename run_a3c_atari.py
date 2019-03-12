@@ -6,6 +6,7 @@ import a3c
 import utils
 import policies
 import wrappers
+from policies import AtariPolicy
 
 
 def make_atari_env(name, history_len):
@@ -30,13 +31,11 @@ def main():
 
     utils.seed_all(seed=args.seed)
 
-    policy = policies.AtariPolicy
-
     optimizer = tf.train.AdamOptimizer(learning_rate=5e-5, epsilon=1e-4, use_locking=True)
 
     a3c.execute(
         lambda: make_atari_env(args.env, args.history_len),
-        policy,
+        AtariPolicy,
         optimizer,
         discount=0.99,
         lambda_pi=args.lambda_pi,
@@ -45,9 +44,8 @@ def main():
         max_sample_length=10,
         n_actors=16,
         max_timesteps=10000000,
-        state_dtype=tf.uint8,
-        log_every_n_steps=250000,
         grad_clip=40.,
+        log_every_n_steps=50000,
     )
 
 

@@ -1,12 +1,9 @@
 import tensorflow as tf
 import numpy as np
-import itertools
-import gym
-import threading
-import math
-import time
-import utils
-import wrappers
+from itertools import count
+from threading import Thread
+from time import time
+from utils import *
 
 
 def execute(
@@ -20,19 +17,20 @@ def execute(
         max_sample_length,
         n_actors,
         max_timesteps,
-        state_dtype=tf.float32,
-        log_every_n_steps=25000,
         grad_clip=None,
+        log_every_n_steps=100000,
+        mov_avg_size=300,
     ):
 
     training_envs = [make_env() for i in range(n_actors)]
     benchmark_env = make_env()
 
     input_shape = benchmark_env.observation_space.shape
+    input_dtype = benchmark_env.observation_space.dtype
     n_actions   = benchmark_env.action_space.n
 
     with tf.Session() as session:
-        state_ph      = tf.placeholder(state_dtype, [None] + list(input_shape))
+        state_ph      = tf.placeholder(input_dtype, [None] + list(input_shape))
         action_ph     = tf.placeholder(tf.int32,    [None])
         pi_return_ph  = tf.placeholder(tf.float32,  [None])
         ve_return_ph  = tf.placeholder(tf.float32,  [None])
@@ -55,22 +53,25 @@ def execute(
 
         session.run(tf.global_variables_initializer())
 
-        shared_counter = utils.Counter(period=log_every_n_steps)
+        def policy(state):
+            distr = session.run(action_distr, feed_dict={state_ph: state[None]})[0]
+            action = np.random.choice(np.arange(n_actions), p=distr)
+            return action
+
+        shared_counter = ThreadsafeCounter(period=log_every_n_steps)
+        shared_rewards = ThreadsafeRewards(maxlen=mov_avg_size)
+        shared_rewards.extend(benchmark(benchmark_env, policy, n_episodes=mov_avg_size))
 
 
         class Actor:
-            def __init__(self, env, counter):
+            def __init__(self, env):
                 self.env = env
-                self.epoch_begin = 0
-
-                self.state   = None
-                self.done    = True
-
-                self.counter = counter
-                self.thread  = None
+                self.state = None
+                self.done = True
+                self.thread = None
 
             def start(self):
-                self.thread = threading.Thread(target=self._train)
+                self.thread = Thread(target=self._train)
                 self.thread.start()
 
             def join(self):
@@ -78,10 +79,10 @@ def execute(
                 self.thread.join()
 
             def _train(self):
-                while not self.counter.is_expired():
+                while not shared_counter.is_expired():
                     states, actions, pi_returns, ve_returns = self._sample()
 
-                    self.counter.increment(len(states))
+                    shared_counter.increment(len(states))
 
                     session.run(train_op, feed_dict={
                         state_ph:     states,
@@ -89,11 +90,6 @@ def execute(
                         pi_return_ph: pi_returns,
                         ve_return_ph: ve_returns,
                     })
-
-            def policy(self, state):
-                distr = session.run(action_distr, feed_dict={state_ph: state[None]})[0]
-                action = np.random.choice(np.arange(n_actions), p=distr)
-                return action
 
             def _value(self, states):
                 return session.run(value, feed_dict={state_ph: states})
@@ -109,14 +105,16 @@ def execute(
                 if done:
                     state = self.env.reset()
                     done = False
+                    if self.get_total_episodes() > 0:
+                        shared_rewards.append(get_episode_rewards(self.env)[-1])
 
                 states.append(state)
 
-                for t in itertools.count():
+                for t in count():
                     if t == max_sample_length or done:
                         break
 
-                    action = self.policy(state)
+                    action = policy(state)
 
                     state, reward, done, _ = self.env.step(action)
 
@@ -147,38 +145,23 @@ def execute(
 
                 return returns
 
-            def _get_episode_rewards(self):
-                return utils.get_episode_rewards(self.env)
-
             def get_total_episodes(self):
-                return len(self._get_episode_rewards())
-
-            def get_epoch_rewards(self):
-                rewards = self._get_episode_rewards()[self.epoch_begin:]
-                self.epoch_begin = self.get_total_episodes()
-                return rewards
+                return len(get_episode_rewards(self.env))
 
 
-        actors = [Actor(training_envs[i], shared_counter) for i in range(n_actors)]
+        actors = [Actor(training_envs[i]) for i in range(n_actors)]
         timesteps = 0
         best_mean_reward = -float('inf')
-        start_time = time.time()
+        start_time = time()
 
-        for epoch in itertools.count():
+        for epoch in count():
             print('Epoch', epoch)
             print('Timestep', timesteps)
-            print('Realtime {:.3f}'.format(time.time() - start_time))
+            print('Realtime {:.3f}'.format(time() - start_time))
             print('Episodes', sum([a.get_total_episodes() for a in actors]))
 
-            if epoch == 0:
-                rewards = utils.benchmark(benchmark_env, actors[0].policy, n_episodes=100)
-            else:
-                rewards = list(itertools.chain.from_iterable(
-                              [a.get_epoch_rewards() for a in actors]
-                          ))
-
-            mean_reward = np.mean(rewards)
-            std_reward = np.std(rewards)
+            mean_reward = shared_rewards.mean()
+            std_reward = shared_rewards.std()
             best_mean_reward = max(mean_reward, best_mean_reward)
 
             print('Mean reward', mean_reward)
