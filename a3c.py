@@ -6,6 +6,31 @@ from time import time
 from utils import *
 
 
+def calculate_lambda_returns(rewards, values, done, discount, lambd):
+    if done:
+        values[-1] = 0.0
+    lambda_returns = rewards + (discount * values[1:])
+    for i in reversed(range(len(rewards) - 1)):
+        lambda_returns[i] += (discount * lambd) * (lambda_returns[i+1] - values[i+1])
+    return lambda_returns
+
+
+def calculate_renormalized_lambda_returns(rewards, values, done, discount, lambd):
+    assert lambd != 1.0
+    if done:
+        values[-1] = 0.0
+    lambda_returns = rewards + (discount * values[1:])
+    N = 1
+    for i in reversed(range(len(rewards) - 1)):
+        def k(n):
+            if n == 0:
+                return 1.0
+            return sum([lambd**i for i in range(n)])
+        N += 1
+        lambda_returns[i] = (1. / k(N)) * (lambda_returns[i] + lambd * k(N-1) * (rewards[i] + discount * lambda_returns[i+1]))
+    return lambda_returns
+
+
 def execute(
         make_env,
         policy,
@@ -13,6 +38,7 @@ def execute(
         discount,
         lambda_pi,
         lambda_ve,
+        renormalize,
         entropy_bonus,
         max_sample_length,
         n_actors,
@@ -128,22 +154,16 @@ def execute(
                 states  = np.array(states)
                 actions = np.array(actions)
                 rewards = np.array(rewards)
+                values = self._value(states)
 
-                pi_returns = self._compute_returns(states, rewards, lambd=lambda_pi)
-                ve_returns = self._compute_returns(states, rewards, lambd=lambda_ve)
+                if renormalize:
+                    pi_returns = calculate_renormalized_lambda_returns(rewards, values, self.done, discount, lambd=lambda_pi)
+                    ve_returns = calculate_renormalized_lambda_returns(rewards, values, self.done, discount, lambd=lambda_ve)
+                else:
+                    pi_returns = calculate_lambda_returns(rewards, values, self.done, discount, lambd=lambda_pi)
+                    ve_returns = calculate_lambda_returns(rewards, values, self.done, discount, lambd=lambda_ve)
 
                 return states[:-1], actions, pi_returns, ve_returns
-
-            def _compute_returns(self, states, rewards, lambd=1.0):
-                values = self._value(states)
-                if self.done:
-                    values[-1] = 0.
-                returns = rewards + (discount * values[1:])
-
-                for i in reversed(range(len(returns) - 1)):
-                    returns[i] += (discount * lambd) * (returns[i+1] - values[i+1])
-
-                return returns
 
             def get_total_episodes(self):
                 return len(get_episode_rewards(self.env))

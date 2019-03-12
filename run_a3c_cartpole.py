@@ -26,6 +26,7 @@ def main():
         discount=0.99,
         lambda_pi=1.0,
         lambda_ve=1.0,
+        renormalize=False,
         entropy_bonus=0.01,
         max_sample_length=20,
         n_actors=16,

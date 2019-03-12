@@ -27,6 +27,7 @@ def main():
     parser.add_argument('--lambda-ve',   type=float, default=1.0)
     parser.add_argument('--history-len', type=int,   default=4)
     parser.add_argument('--seed',        type=int,   default=0)
+    parser.add_argument('--renorm',      action='store_true')
     args = parser.parse_args()
 
     utils.seed_all(seed=args.seed)
@@ -40,6 +41,7 @@ def main():
         discount=0.99,
         lambda_pi=args.lambda_pi,
         lambda_ve=args.lambda_ve,
+        renormalize=args.renorm,
         entropy_bonus=0.01,
         max_sample_length=10,
         n_actors=16,
