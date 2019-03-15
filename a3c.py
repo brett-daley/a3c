@@ -36,8 +36,7 @@ def execute(
         policy,
         optimizer,
         discount,
-        lambda_pi,
-        lambda_ve,
+        lambd,
         renormalize,
         entropy_bonus,
         max_sample_length,
@@ -56,18 +55,17 @@ def execute(
     n_actions   = benchmark_env.action_space.n
 
     with tf.Session() as session:
-        state_ph      = tf.placeholder(input_dtype, [None] + list(input_shape))
-        action_ph     = tf.placeholder(tf.int32,    [None])
-        pi_return_ph  = tf.placeholder(tf.float32,  [None])
-        ve_return_ph  = tf.placeholder(tf.float32,  [None])
+        state_ph  = tf.placeholder(input_dtype, [None] + list(input_shape))
+        action_ph = tf.placeholder(tf.int32,    [None])
+        return_ph = tf.placeholder(tf.float32,  [None])
 
         action_distr, value = policy(state_ph, n_actions, scope='policy')
 
         action_indices = tf.stack([tf.range(tf.size(action_ph)), action_ph], axis=1)
         action_probs = tf.gather_nd(action_distr, action_indices)
 
-        objective = tf.reduce_mean(tf.log(action_probs + 1e-10) * (pi_return_ph - tf.stop_gradient(value)))
-        loss      = tf.reduce_mean(tf.square(ve_return_ph - value))
+        objective = tf.reduce_mean(tf.log(action_probs + 1e-10) * (return_ph - tf.stop_gradient(value)))
+        loss      = tf.reduce_mean(tf.square(return_ph - value))
         entropy   = (-entropy_bonus) * tf.reduce_mean(
                         tf.reduce_sum(action_distr * tf.log(action_distr + 1e-10), axis=1)
                     )
@@ -106,15 +104,14 @@ def execute(
 
             def _train(self):
                 while not shared_counter.is_expired():
-                    states, actions, pi_returns, ve_returns = self._sample()
+                    states, actions, returns = self._sample()
 
                     shared_counter.increment(len(states))
 
                     session.run(train_op, feed_dict={
-                        state_ph:     states,
-                        action_ph:    actions,
-                        pi_return_ph: pi_returns,
-                        ve_return_ph: ve_returns,
+                        state_ph:  states,
+                        action_ph: actions,
+                        return_ph: returns,
                     })
 
             def _value(self, states):
@@ -157,13 +154,11 @@ def execute(
                 values = self._value(states)
 
                 if renormalize:
-                    pi_returns = calculate_renormalized_lambda_returns(rewards, values, self.done, discount, lambd=lambda_pi)
-                    ve_returns = calculate_renormalized_lambda_returns(rewards, values, self.done, discount, lambd=lambda_ve)
+                    returns = calculate_renormalized_lambda_returns(rewards, values, self.done, discount, lambd)
                 else:
-                    pi_returns = calculate_lambda_returns(rewards, values, self.done, discount, lambd=lambda_pi)
-                    ve_returns = calculate_lambda_returns(rewards, values, self.done, discount, lambd=lambda_ve)
+                    returns = calculate_lambda_returns(rewards, values, self.done, discount, lambd)
 
-                return states[:-1], actions, pi_returns, ve_returns
+                return states[:-1], actions, returns
 
             def get_total_episodes(self):
                 return len(get_episode_rewards(self.env))

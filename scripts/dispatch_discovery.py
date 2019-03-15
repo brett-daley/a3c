@@ -14,7 +14,7 @@ template = '''#!/bin/bash
 #SBATCH --mem=8192
 
 echo start at $(date)
-python {runner_path} --env {env} --history-len {history_len} --lambda-ve {lambda_ve} --seed {seed} &> {results_path}
+python {runner_path} --env {env} --history-len {history_len} --lambd {lambd} --seed {seed} &> {results_path}
 echo end at $(date)
 '''
 
@@ -56,7 +56,7 @@ if __name__ == '__main__':
 
     # Begin dispatching experiments
     for env in environments:
-        for lve in lambdas:
+        for lambd in lambdas:
             for len in history_lens:
                 for seed in seeds:
                     # Generate job name and paths
@@ -64,7 +64,7 @@ if __name__ == '__main__':
                         'a3c',
                         env,
                         'len' + str(len),
-                        'lve' + str(lve),
+                        'lambda' + str(lambd),
                         'seed' + str(seed),
                     ])
                     slurm_path   = os.path.join(slurm_dir,   job_name + '.slurm')
@@ -84,7 +84,7 @@ if __name__ == '__main__':
                             runner_path=runner_path,
                             env=env,
                             history_len=len,
-                            lambda_ve=lve,
+                            lambd=lambd,
                             seed=seed,
                             results_path=results_path,
                         )

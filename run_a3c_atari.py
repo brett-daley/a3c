@@ -23,8 +23,7 @@ def make_atari_env(name, history_len):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--env',         type=str,   default='pong')
-    parser.add_argument('--lambda-pi',   type=float, default=1.0)
-    parser.add_argument('--lambda-ve',   type=float, default=1.0)
+    parser.add_argument('--lambd',       type=float, default=1.0)
     parser.add_argument('--history-len', type=int,   default=4)
     parser.add_argument('--seed',        type=int,   default=0)
     parser.add_argument('--renorm',      action='store_true')
@@ -39,8 +38,7 @@ def main():
         AtariPolicy,
         optimizer,
         discount=0.99,
-        lambda_pi=args.lambda_pi,
-        lambda_ve=args.lambda_ve,
+        lambd=args.lambd,
         renormalize=args.renorm,
         entropy_bonus=0.01,
         max_sample_length=10,

@@ -36,12 +36,12 @@ for env in $ENVS; do
                 mkdir $dir
             fi
 
-            cmd="$PYTHON_CMD --env $env --lambda-ve $lambda --history-len 1 --seed ${seed}"
-            filename="seed${seed}/a3c_${env}_1_e${lambda}.txt"
+            cmd="$PYTHON_CMD --env $env --lambd $lambda --history-len 1 --seed ${seed}"
+            filename="seed${seed}/a3c_${env}_1_lambda${lambda}.txt"
             run "$cmd" "$filename"
 
-            cmd="$PYTHON_CMD --env $env --lambda-ve $lambda --history-len 4 --seed ${seed}"
-            filename="seed${seed}/a3c_${env}_4_e${lambda}.txt"
+            cmd="$PYTHON_CMD --env $env --lambd $lambda --history-len 4 --seed ${seed}"
+            filename="seed${seed}/a3c_${env}_4_lambda${lambda}.txt"
             run "$cmd" "$filename"
         done
     done
