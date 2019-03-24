@@ -44,7 +44,7 @@ def execute(
         max_timesteps,
         grad_clip=None,
         log_every_n_steps=100000,
-        mov_avg_size=300,
+        mov_avg_size=500,
     ):
 
     training_envs = [make_env() for i in range(n_actors)]

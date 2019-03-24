@@ -17,9 +17,9 @@ python {runner_path} --env {env} --history-len {history_len} --lambd {lambd} --s
 echo end at $(date)
 '''
 
-lambdas = [0.7, 1.0]
+lambdas = [0.25, 0.5, 0.75, 1.0]
 history_lens = [1]
-seeds = [0, 1, 2]
+seeds = [0, 1, 2, 3, 4]
 
 environments = [
     'breakout',
@@ -53,7 +53,7 @@ if __name__ == '__main__':
     for env in environments:
         for lambd in lambdas:
             for len in history_lens:
-                for renorm in ([False, True] if lambd != 1.0 else [False]):
+                for renorm in ([False] if lambd != 1.0 else [False]):
                     for seed in seeds:
                         # Generate job name and paths
                         job_name = '_'.join([

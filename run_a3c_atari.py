@@ -43,9 +43,9 @@ def main():
         entropy_bonus=0.01,
         max_sample_length=10,
         n_actors=16,
-        max_timesteps=10000000,
+        max_timesteps=40000000,
         grad_clip=40.,
-        log_every_n_steps=50000,
+        log_every_n_steps=1000,
     )
 
 
