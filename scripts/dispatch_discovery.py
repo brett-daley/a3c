@@ -51,7 +51,7 @@ if __name__ == '__main__':
     results_dir = mkdir('results')
 
     # Begin dispatching experiments
-    experiments = config.values() if args.target == 'all' else config[args.target]
+    experiments = config.values() if args.target == 'all' else [config[args.target]]
 
     for exp in experiments:
         for env in exp['env']:
