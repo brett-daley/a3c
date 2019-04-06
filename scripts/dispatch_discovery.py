@@ -1,5 +1,7 @@
 import os
 from subprocess import call
+from argparse import ArgumentParser
+import yaml
 
 
 template = '''#!/bin/bash
@@ -13,22 +15,9 @@ template = '''#!/bin/bash
 #SBATCH --mem=8192
 
 echo start at $(date)
-python {runner_path} --env {env} --history-len {history_len} --lambd {lambd} --seed {seed} {renorm} &> {results_path}
+python {runner_path} --env {env} --history-len {history_len} --return-type {return_type} --seed {seed} &> {results_path}
 echo end at $(date)
 '''
-
-lambdas = [0.25, 0.5, 0.75, 1.0]
-history_lens = [1]
-seeds = [0, 1, 2, 3, 4]
-
-environments = [
-    'breakout',
-    'beam_rider',
-    'pong',
-    'qbert',
-    'seaquest',
-    'space_invaders',
-]
 
 
 def mkdir(name):
@@ -38,11 +27,23 @@ def mkdir(name):
     return path
 
 
+def make_name(env, len, return_type, seed):
+    return '_'.join(['a3c', env.replace('_', '-'), 'len' + str(len), return_type, 'seed' + str(seed)])
+
+
 if __name__ == '__main__':
+    parser = ArgumentParser()
+    parser.add_argument('target', type=str, help='Name of experiment to run. Use \'all\' to run everything.')
+    args = parser.parse_args()
+
     # Make sure we are in the repository's root directory
     work_dir = os.getcwd()
     runner_path = os.path.join(work_dir, 'run_a3c_atari.py')
     assert os.path.exists(runner_path)
+
+    config_path = os.path.join(work_dir, 'scripts/_automate.yaml')
+    with open(config_path, 'r') as f:
+        config = yaml.safe_load(f)
 
     # Make directories for slurm, log, and results files
     slurm_dir   = mkdir('slurm')
@@ -50,19 +51,15 @@ if __name__ == '__main__':
     results_dir = mkdir('results')
 
     # Begin dispatching experiments
-    for env in environments:
-        for lambd in lambdas:
-            for len in history_lens:
-                for renorm in ([False] if lambd != 1.0 else [False]):
-                    for seed in seeds:
+    experiments = config.values() if args.target == 'all' else config[args.target]
+
+    for exp in experiments:
+        for env in exp['env']:
+            for len in exp['history_len']:
+                for return_type in exp['return_type']:
+                    for seed in range(exp['num_seeds']):
                         # Generate job name and paths
-                        job_name = '_'.join([
-                            'a3c',
-                            env,
-                            'len' + str(len),
-                            ('renorm' if renorm else '') + 'lambda' + str(lambd),
-                            'seed' + str(seed),
-                        ])
+                        job_name = make_name(env, len, return_type, seed)
                         slurm_path   = os.path.join(slurm_dir,   job_name + '.slurm')
                         log_path     = os.path.join(log_dir,     job_name + '.txt')
                         results_path = os.path.join(results_dir, job_name + '.txt')
@@ -80,9 +77,8 @@ if __name__ == '__main__':
                                 runner_path=runner_path,
                                 env=env,
                                 history_len=len,
-                                lambd=lambd,
+                                return_type=return_type,
                                 seed=seed,
-                                renorm=('--renorm' if renorm else ''),
                                 results_path=results_path,
                             )
                             file.write(slurm)

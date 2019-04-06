@@ -23,11 +23,19 @@ def make_atari_env(name, history_len):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--env',         type=str,   default='pong')
-    parser.add_argument('--lambd',       type=float, default=1.0)
+    parser.add_argument('--return-type', type=str,   default='lambda-1.0')
     parser.add_argument('--history-len', type=int,   default=4)
     parser.add_argument('--seed',        type=int,   default=0)
-    parser.add_argument('--renorm',      action='store_true')
     args = parser.parse_args()
+
+    if 'renorm-lambda-' in args.return_type:
+        lambd = float( args.return_type.strip('renorm-lambda-') )
+        renorm = True
+    elif 'lambda-' in args.return_type:
+        lambd = float( args.return_type.strip('lambda-') )
+        renorm = False
+    else:
+        raise ValueError('Unrecognized return type')
 
     utils.seed_all(seed=args.seed)
 
@@ -38,8 +46,8 @@ def main():
         AtariPolicy,
         optimizer,
         discount=0.99,
-        lambd=args.lambd,
-        renormalize=args.renorm,
+        lambd=lambd,
+        renormalize=renorm,
         entropy_bonus=0.01,
         max_sample_length=10,
         n_actors=16,

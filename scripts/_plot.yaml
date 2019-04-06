@@ -1,0 +1,47 @@
+---
+fig1:
+  num_seeds: 5
+  num_timesteps: 40000000
+  downsample: 80
+  legend: [A3C, A3C($\lambda=0.25$), A3C($\lambda=0.5$), A3C($\lambda=0.75$)]
+  colors: [black, blue, green, red]
+  legend_on_plots: false
+  filenames:
+    - a3c_beam-rider_len1
+    - a3c_breakout_len1
+    - a3c_pong_len1
+    - a3c_qbert_len1
+    - a3c_seaquest_len1
+    - a3c_space-invaders_len1
+  plots:
+    Beam Rider (1-Frame Input):
+      - a3c_beam_rider_len1_lambda1.0_seed*.txt
+      - a3c_beam_rider_len1_lambda0.25_seed*.txt
+      - a3c_beam_rider_len1_lambda0.5_seed*.txt
+      - a3c_beam_rider_len1_lambda0.75_seed*.txt
+    Breakout (1-Frame Input):
+      - a3c_breakout_len1_lambda1.0_seed*.txt
+      - a3c_breakout_len1_lambda0.25_seed*.txt
+      - a3c_breakout_len1_lambda0.5_seed*.txt
+      - a3c_breakout_len1_lambda0.75_seed*.txt
+    Pong (1-Frame Input):
+      - a3c_pong_len1_lambda1.0_seed*.txt
+      - a3c_pong_len1_lambda0.25_seed*.txt
+      - a3c_pong_len1_lambda0.5_seed*.txt
+      - a3c_pong_len1_lambda0.75_seed*.txt
+    Q*Bert (1-Frame Input):
+      - a3c_qbert_len1_lambda1.0_seed*.txt
+      - a3c_qbert_len1_lambda0.25_seed*.txt
+      - a3c_qbert_len1_lambda0.5_seed*.txt
+      - a3c_qbert_len1_lambda0.75_seed*.txt
+    Seaquest (1-Frame Input):
+      - a3c_seaquest_len1_lambda1.0_seed*.txt
+      - a3c_seaquest_len1_lambda0.25_seed*.txt
+      - a3c_seaquest_len1_lambda0.5_seed*.txt
+      - a3c_seaquest_len1_lambda0.75_seed*.txt
+    Space Invaders (1-Frame Input):
+      - a3c_space_invaders_len1_lambda1.0_seed*.txt
+      - a3c_space_invaders_len1_lambda0.25_seed*.txt
+      - a3c_space_invaders_len1_lambda0.5_seed*.txt
+      - a3c_space_invaders_len1_lambda0.75_seed*.txt
+...
