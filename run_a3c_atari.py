@@ -5,17 +5,16 @@ import argparse
 import a3c
 import utils
 import policies
-import wrappers
+from wrappers import monitor, wrap_deepmind, HistoryWrapper
 from policies import AtariPolicy
 
 
 def make_atari_env(name, history_len):
     from gym.envs.atari.atari_env import AtariEnv
-    from gym.wrappers.monitor import Monitor
     env = AtariEnv(game=name, frameskip=4, obs_type='image')
-    env = Monitor(env, 'videos/', force=True, video_callable=lambda e: False)
-    env = wrappers.wrap_deepmind(env)
-    env = wrappers.HistoryWrapper(env, history_len)
+    env = monitor(env, name)
+    env = wrap_deepmind(env)
+    env = HistoryWrapper(env, history_len)
     env.seed(utils.random_seed())
     return env
 

@@ -3,11 +3,12 @@ import tensorflow as tf
 import a3c
 import utils
 from policies import CartPolePolicy
+from wrappers import monitor
 
 
 def make_env(name):
     env = gym.make(name)
-    env = gym.wrappers.Monitor(env, 'videos/', force=True, video_callable=lambda e: False)
+    env = monitor(env, name)
     env.seed(utils.random_seed())
     return env
 
