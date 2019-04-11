@@ -15,83 +15,41 @@
 #     - lambda-0.75
 #     - lambda-1.0
 
-
-
-exp2_beam_rider:
-  num_seeds: 5
-  env: [beam_rider]
-  history_len: [1]
-  return_type: [renorm-lambda-0.5]
-
-exp2_breakout:
-  num_seeds: 5
-  env: [breakout]
-  history_len: [1]
-  return_type: [renorm-lambda-0.75]
-
-exp2_pong:
-  num_seeds: 5
-  env: [pong]
-  history_len: [1]
-  return_type: [renorm-lambda-0.75]
-
-exp2_qbert:
-  num_seeds: 5
-  env: [qbert]
-  history_len: [1]
-  return_type: [renorm-lambda-0.75]
-
-exp2_seaquest:
-  num_seeds: 5
-  env: [seaquest]
-  history_len: [1]
-  return_type: [renorm-lambda-0.75]
-
-exp2_space_invaders:
-  num_seeds: 5
-  env: [space_invaders]
-  history_len: [1]
-  return_type: [renorm-lambda-0.5]
-
-
-
-# exp3_beam_rider:
+# exp2a:
 #   num_seeds: 5
-#   env: [breakout]
-#   history_len: [4]
+#   env:
+#     - beam_rider
+#     - space_invaders
+#   history_len: [1]
+#   return_type: [renorm-lambda-0.5]
+
+# exp2b:
+#   num_seeds: 5
+#   env:
+#     - breakout
+#     - pong
+#     - qbert
+#     - seaquest
+#   history_len: [1]
 #   return_type: [renorm-lambda-0.75]
 
-# exp3_breakout:
-#   num_seeds: 5
-#   env: [breakout]
-#   history_len: [4]
-#   return_type: [renorm-lambda-0.75]
+exp3a:
+  num_seeds: 5
+  env:
+    - beam_rider
+    - space_invaders
+  history_len: [4]
+  return_type: [lambda-0.5]
 
-# exp3_pong:
-#   num_seeds: 5
-#   env: [breakout]
-#   history_len: [4]
-#   return_type: [renorm-lambda-0.75]
-
-# exp3_qbert:
-#   num_seeds: 5
-#   env: [breakout]
-#   history_len: [4]
-#   return_type: [renorm-lambda-0.75]
-
-# exp3_seaquest:
-#   num_seeds: 5
-#   env: [breakout]
-#   history_len: [4]
-#   return_type: [renorm-lambda-0.75]
-
-# exp3_space_invaders:
-#   num_seeds: 5
-#   env: [breakout]
-#   history_len: [4]
-#   return_type: [renorm-lambda-0.75]
-
-
+exp3b:
+  num_seeds: 5
+  env:
+    - breakout
+    - pong
+    - qbert
+    - seaquest
+  history_len: [4]
+  return_type: [lambda-0.75]
 
 # exp4:
 #   num_seeds: 5
