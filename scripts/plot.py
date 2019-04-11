@@ -73,7 +73,9 @@ class AxisManager:
 
         for trace in self.traces.keys():
             d = self.traces[trace]
-            assert d['count'] == n
+
+            if d['count'] != n:
+                raise AssertionError('{} found only {} seed(s) but needs {}'.format(trace, d['count'], n))
 
             d['x'] /= n
             d['y'] /= n
